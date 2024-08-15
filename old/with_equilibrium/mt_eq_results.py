@@ -1,7 +1,8 @@
-from definition_func_class import *
 from scipy.optimize import newton
 import numpy as np
 import matplotlib.pyplot as plt
+
+from .definition_func_class import *
 
 
 class Musculotendon_equilibrium_results(BiorbdModel_musculotendon_equilibrium):

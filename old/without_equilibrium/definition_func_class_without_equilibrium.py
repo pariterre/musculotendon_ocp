@@ -92,15 +92,11 @@ class DynamicsFunctions_musculotendon_equilibrium(DynamicsFunctions):
         q: MX | SX,
         qdot: MX | SX,
         muscle_activations: MX | SX,
-        fatigue_states: MX | SX = None,
     ):
 
         activations = []
         for k in range(len(nlp.controls["muscles"])):
-            if fatigue_states is not None:
-                activations.append(muscle_activations[k] * (1 - fatigue_states[k]))
-            else:
-                activations.append(muscle_activations[k])
+            activations.append(muscle_activations[k])
         return nlp.model.muscle_joint_torque(activations, q, qdot)
 
 
@@ -108,13 +104,15 @@ class BiorbdModel_musculotendon_equilibrium(BiorbdModel):
     """Musculotendon without Equilibrium"""
 
     # Force passive definition = fpce
-    # Warning modification of the equation du to sign issue when muscle_length_normalized is under 1
+    # Warning modification of the equation due to sign issue when muscle_length_normalized is under 1
     def fpas(self, muscle_length_normalized):
+        # TODO REMOVE
         offset = (casadi.exp(kpe * (0 - 1) / e0) - 1) / (casadi.exp(kpe) - 1)
         return (casadi.exp(kpe * (muscle_length_normalized - 1) / e0) - 1) / (casadi.exp(kpe) - 1) - offset
 
     # Force active definition = flce
     def fact(self, muscle_length_normalized):
+        # TODO REMOVE
         return (
             b11
             * casadi.exp(
@@ -128,6 +126,7 @@ class BiorbdModel_musculotendon_equilibrium(BiorbdModel):
 
     # Muscle force velocity equation = fvce
     def fvm(self, muscle_velocity_normalized):
+        # TODO REMOVE
         return (
             d1
             * casadi.log(
@@ -141,14 +140,6 @@ class BiorbdModel_musculotendon_equilibrium(BiorbdModel):
         """Offset here because without it we have ft(1) < 0 whereas it should be 0."""
         offset = 0.01175075667752834
         return c1 * casadi.exp(kt * (tendon_length_normalized - c2)) - c3 + offset
-
-    def muscle_joint_torque(self, activations, q, qdot) -> MX:
-        self.check_q_size(q)
-        self.check_qdot_size(qdot)
-        self.check_muscle_size(activations)
-        jacobian_length, Muscular_force = self.set_muscles_from_q(q, qdot, activations[0])
-        tau = -casadi.transpose(jacobian_length) @ Muscular_force
-        return tau
 
     def muscle_velocity_calculation(self, pennationAngle: MX, musculoTendonVelocity: MX):
         """

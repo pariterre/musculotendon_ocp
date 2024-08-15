@@ -1,4 +1,3 @@
-from definition_func_class_without_equilibrium import *
 import platform
 
 
@@ -22,6 +21,8 @@ from biorbd_casadi import (
     GeneralizedTorque,
     GeneralizedAcceleration,
 )
+
+from .definition_func_class_without_equilibrium import *
 
 import casadi
 from casadi import SX, MX, vertcat, horzcat, norm_fro, Function, jacobian, norm_2

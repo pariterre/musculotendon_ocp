@@ -148,11 +148,13 @@ class BiorbdModel_musculotendon_equilibrium(BiorbdModel):
     def fpas(self, muscle_length_normalized):
         """Force passive definition = fpce
         Warning modification of the equation du to sign issue when muscle_length_normalized is under 1 !!!"""
+        # TODO REMOVE
         offset = (casadi.exp(kpe * (0 - 1) / e0) - 1) / (casadi.exp(kpe) - 1)
         return (casadi.exp(kpe * (muscle_length_normalized - 1) / e0) - 1) / (casadi.exp(kpe) - 1) - offset
 
     def fact(self, muscle_length_normalized):
         """Force active definition = flce"""
+        # TODO REMOVE
         return (
             b11
             * casadi.exp(
@@ -166,6 +168,7 @@ class BiorbdModel_musculotendon_equilibrium(BiorbdModel):
 
     def fvm(self, muscle_velocity_normalized):
         """Muscle force velocity equation = fvce"""
+        # TODO REMOVE
         return (
             d1
             * casadi.log(
@@ -266,6 +269,7 @@ class BiorbdModel_musculotendon_equilibrium(BiorbdModel):
         Function which is used to plot the value of the muscle force pennated.
         """
 
+        # TODO Use casadi_utils
         def get_control(dt_norm, control):
             if control.shape[1] == 1:
                 return control[:, 0]

@@ -1,5 +1,5 @@
-from With_Equilibrium_src.definition_func_class import *
-from With_Equilibrium_src.mt_eq_results import *
+from .definition_func_class import *
+from .mt_eq_results import *
 import platform
 
 
@@ -68,7 +68,7 @@ from bioptim import (
 from bioptim.gui.plot import CustomPlot
 
 
-def custom_multinode_constraint(controllers: list[PenaltyController, ...]) -> MX:
+def custom_multinode_constraint(controllers: list[PenaltyController]) -> MX:
     """
     The constraint of the transition of the muscle velocity. We calculate the muscle velocity and we interpolate the
     control vm_c_normalized to it. Thanks to this, we can use the previous vm_normalized to calculate the new vm.

@@ -1,8 +1,6 @@
-from With_Equilibrium_src import with_equilibrium_calculation
-from Without_Equilibrium_src import without_equilibrium_calculation
-from With_Equilibrium_src.definition_func_class import Method_VM_Calculation
-import comparaison_resultats
-import comparaison_result_1_graph
+from old.with_equilibrium import with_equilibrium_calculation
+from old.without_equilibrium import without_equilibrium_calculation
+from old.with_equilibrium.definition_func_class import Method_VM_Calculation
 
 
 def Method_Calculation(
@@ -73,18 +71,15 @@ def main():
 
     Method_Calculation(
         choice="with_equilibrium",
-        path="models/test.bioMod",
+        path="musculotendon_ocp/rigidbody_models/models/test.bioMod",
         n_shooting=100,
         Time=0.2,
         LinearContinuous=True,
         Collocation=False,
         q0_init=-0.22,
         q0_final=-0.31,
-        #Method_VM_Calculation_value=Method_VM_Calculation.DAMPING_LINEAR,
+        # Method_VM_Calculation_value=Method_VM_Calculation.DAMPING_LINEAR,
     )
-
-    comparaison_resultats.main()
-    comparaison_result_1_graph.main()
 
     return
 
