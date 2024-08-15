@@ -1,0 +1,10 @@
+name: musculotendon_ocp
+channels:
+- conda-forge
+dependencies:
+- bioptim
+- casadi
+- numpy
+- matplotlib
+- scipy
+- pytest
