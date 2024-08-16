@@ -7,17 +7,9 @@ endsegment
 
 
 // Insertion
-segment Seg1
+segment Cube
     parent Global
     translations z
-    ranges
-        -1 1
-    RTinMatrix 1
-    RT 
-        1 0 0 0
-        0 1 0 0
-        0 0 1 -0.25
-        0 0 0 1
     mass 10
 
     mesh -0.15 -0.15 0
@@ -55,10 +47,10 @@ endsegment
 
 musclegroup musclegroup1
     OriginParent        Global
-    InsertionParent        Seg1
+    InsertionParent        Cube
 endmusclegroup
 
-    muscle    Example
+    muscle    Mus1
         Type    degroote
         musclegroup    musclegroup1
         OriginPosition    0 0 0

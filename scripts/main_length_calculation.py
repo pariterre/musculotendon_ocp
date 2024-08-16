@@ -71,7 +71,7 @@ def main():
 
     Method_Calculation(
         choice="with_equilibrium",
-        path="musculotendon_ocp/rigidbody_models/models/test.bioMod",
+        path="musculotendon_ocp/rigidbody_models/models/one_muscle_holding_a_cube.bioMod",
         n_shooting=100,
         Time=0.2,
         LinearContinuous=True,

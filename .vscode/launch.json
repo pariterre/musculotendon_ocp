@@ -8,8 +8,15 @@
             "name": "Length computation",
             "type": "debugpy",
             "request": "launch",
-            "program": "${workspaceFolder}/main_length_calculation.py",
-            "console": "integratedTerminal"
-        }
+            "program": "${workspaceFolder}/scripts/main_length_calculation.py",
+            "console": "integratedTerminal",
+        },
+        {
+            "name": "Validate rigid velocity",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/validate_velocity_rigid_tendon.py",
+            "console": "integratedTerminal",
+        },
     ]
 }
