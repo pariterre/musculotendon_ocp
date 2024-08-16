@@ -1,7 +1,12 @@
 from typing import Callable, override
 
-from casadi import MX, cos
+from casadi import MX
 
+from .pennation_angle import PennationAngleConstant
+from .force_active import ForceActiveHillType
+from .force_damping import ForceDampingConstant
+from .force_passive import ForcePassiveHillType
+from .force_velocity import ForceVelocityHillType
 from ..muscle_model_abstract import MuscleModelAbstract
 
 """
@@ -19,7 +24,7 @@ Returns
 MX
     The pennation angle corresponding to the given muscle length
 """
-type ApplyPennationAngleCallable = Callable[[MX, MX], MX]
+type PennationAngleCallable = Callable[[MX, MX], MX]
 
 """
 Returns the normalized force from the passive force-length relationship
@@ -86,18 +91,18 @@ MX
 type ForceDampingCallable = Callable[[MX], MX]
 
 
-class MuscleModelHillFixedTendon(MuscleModelAbstract):
+class MuscleModelHillRigidTendon(MuscleModelAbstract):
     def __init__(
         self,
         name: str,
         maximal_force: MX,
         optimal_length: MX,
-        maximal_velocity: MX,
-        apply_pennation_angle: ApplyPennationAngleCallable,
-        force_passive: ForcePassiveCallable,
-        force_active: ForceActiveCallable,
-        force_velocity: ForceVelocityCallable,
-        force_damping: ForceDampingCallable,
+        maximal_velocity: MX = 5.0,
+        pennation_angle: PennationAngleCallable = PennationAngleConstant(),
+        force_passive: ForcePassiveCallable = ForcePassiveHillType(),
+        force_active: ForceActiveCallable = ForceActiveHillType(),
+        force_velocity: ForceVelocityCallable = ForceVelocityHillType(),
+        force_damping: ForceDampingCallable = ForceDampingConstant(),
     ):
         """
         Parameters
@@ -110,7 +115,7 @@ class MuscleModelHillFixedTendon(MuscleModelAbstract):
             The optimal length of the muscle
         maximal_velocity: MX
             The maximal velocity of the muscle
-        apply_pennation_angle: PennationAngleCallable
+        pennation_angle: PennationAngleCallable
             The pennation angle function
         force_passive: ForcePassiveCallable
             The passive force-length relationship function
@@ -123,11 +128,17 @@ class MuscleModelHillFixedTendon(MuscleModelAbstract):
         """
         super().__init__(name=name)
 
+        if maximal_force < 0:
+            raise ValueError("The maximal force must be positive")
         self.maximal_force = maximal_force
+        if optimal_length < 0:
+            raise ValueError("The optimal length must be positive")
         self.optimal_length = optimal_length
+        if maximal_velocity < 0:
+            raise ValueError("The maximal velocity must be positive")
         self.maximal_velocity = maximal_velocity
 
-        self.apply_pennation_angle = apply_pennation_angle
+        self.pennation_angle = pennation_angle
 
         self.force_passive = force_passive
         self.force_active = force_active
@@ -158,7 +169,7 @@ class MuscleModelHillFixedTendon(MuscleModelAbstract):
         force_velocity = self.force_velocity(normalized_velocity)
         force_damping = self.force_damping(normalized_velocity)
 
-        return self.apply_pennation_angle(
+        return self.pennation_angle(
             muscle_fiber_length,
             self.maximal_force * (force_passive + activation * force_active * force_velocity + force_damping),
         )

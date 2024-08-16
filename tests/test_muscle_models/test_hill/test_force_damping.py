@@ -1,7 +1,6 @@
-import pytest
-
 from musculotendon_ocp import ForceDampingConstant, ForceDampingLinear
 from numpy.testing import assert_almost_equal
+import pytest
 
 
 @pytest.mark.parametrize("factor", [0.0, 1.0, 2.0])

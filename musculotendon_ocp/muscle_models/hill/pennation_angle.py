@@ -1,7 +1,7 @@
 from casadi import MX, cos, sin, asin
 
 
-class ApplyPennationAngleConstant:
+class PennationAngleConstant:
     def __init__(self, pennation_angle: float = 0.0):
         if pennation_angle < 0.0:
             raise ValueError("The pennation angle must be positive")
@@ -11,7 +11,7 @@ class ApplyPennationAngleConstant:
         return element * cos(self.pennation_angle)
 
 
-class ApplyPennationAngleWrtMuscleFiberLength:
+class PennationAngleWrtMuscleFiberLength:
     def __init__(self, optimal_pennation_angle: float = 0.0, optimal_muscle_fiber_length: float = 0.0):
         if optimal_pennation_angle < 0.0:
             raise ValueError("The optimal pennation angle must be positive")
