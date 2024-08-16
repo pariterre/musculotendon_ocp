@@ -4,7 +4,7 @@ from .force_passive import ForcePassiveHillType, ForcePassiveAlwaysPositiveHillT
 from .force_velocity import ForceVelocityHillType
 from .apply_pennation_angle import ApplyPennationAngleConstant, ApplyPennationAngleWrtMuscleFiberLength
 
-from .muscle_model_hill import MuscleModelHillFixedTendon
+from .muscle_model_hill_rigid_tendon import MuscleModelHillFixedTendon
 
 __all__ = [
     "ForceActiveHillType",

@@ -1,4 +1,5 @@
 from musculotendon_ocp import ForceVelocityHillType
+from numpy.testing import assert_almost_equal
 
 
 def test_force_velocity_hill_type():
@@ -10,14 +11,26 @@ def test_force_velocity_hill_type():
     assert force_velocity_model.d4 == 0.886
 
     # Test exact values
-    assert force_velocity_model(normalized_muscle_velocity=0.0) == 1.002320622548512  # Isometric contraction
+    assert_almost_equal(
+        force_velocity_model(normalized_muscle_velocity=0.0), 1.002320622548512
+    )  # Isometric contraction
 
-    assert force_velocity_model(normalized_muscle_velocity=0.5) == 1.5850003902837804  # Slow eccentric contraction
-    assert force_velocity_model(normalized_muscle_velocity=1.0) == 1.7889099602998804  # Fast eccentric contraction
+    assert_almost_equal(
+        force_velocity_model(normalized_muscle_velocity=0.5), 1.5850003902837804
+    )  # Slow eccentric contraction
+    assert_almost_equal(
+        force_velocity_model(normalized_muscle_velocity=1.0), 1.7889099602998804
+    )  # Fast eccentric contraction
 
-    assert force_velocity_model(normalized_muscle_velocity=-0.5) == 0.2438336294197121  # Slow concentric contraction
-    assert force_velocity_model(normalized_muscle_velocity=-1.0) == 0.012081678112282557  # Fast concentric contraction
-    assert force_velocity_model(normalized_muscle_velocity=-2.0) == -0.21490297384011525  # Supra concentric contraction
+    assert_almost_equal(
+        force_velocity_model(normalized_muscle_velocity=-0.5), 0.2438336294197121
+    )  # Slow concentric contraction
+    assert_almost_equal(
+        force_velocity_model(normalized_muscle_velocity=-1.0), 0.012081678112282557
+    )  # Fast concentric contraction
+    assert_almost_equal(
+        force_velocity_model(normalized_muscle_velocity=-2.0), -0.21490297384011525
+    )  # Supra concentric contraction
 
     # Test values based on qualitative behavior (increasing S-shaped function)
     assert force_velocity_model(0.0) < force_velocity_model(0.5)

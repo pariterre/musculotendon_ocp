@@ -5,7 +5,7 @@ from casadi import MX, exp
 from ..muscle_model_abstract import MuscleModelAbstract
 
 
-class MuscleModelHillFixedTendon(MuscleModelAbstract):
+class MuscleModelHillFlexibleTendon(MuscleModelAbstract):
     def __init__(
         self,
         tendon_slack_length: float,
