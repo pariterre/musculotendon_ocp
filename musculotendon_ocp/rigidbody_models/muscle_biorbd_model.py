@@ -122,6 +122,8 @@ class MuscleBiorbdModel(BiorbdModel):
             )
 
             # TODO RENDU ICI!!!!
+            # Faire la même structure que pour ForcePassive, mais ici, c'est pour _get_muscle_fiber_length qui retourne
+            # soit la version calculée ou la version intégrée (juste la variable d'état)
             muscle.compute_muscle_force()
 
     @override
