@@ -39,32 +39,32 @@ def test_muscle_model_hill_rigid_tendon():
     assert model.optimal_length == optimal_length
     assert model.tendon_slack_length == tendon_slack_length
     assert model.maximal_velocity == maximal_velocity
-    assert id(model.force_passive) == id(force_passive)
-    assert id(model.force_active) == id(force_active)
-    assert id(model.force_damping) == id(force_damping)
-    assert id(model.force_velocity) == id(force_velocity)
+    assert id(model._force_passive) == id(force_passive)
+    assert id(model._force_active) == id(force_active)
+    assert id(model._force_damping) == id(force_damping)
+    assert id(model._force_velocity) == id(force_velocity)
 
     model_default = MuscleModelHillRigidTendon(
         name=name, maximal_force=maximal_force, optimal_length=optimal_length, tendon_slack_length=tendon_slack_length
     )
     assert model_default.maximal_velocity == 5.0
-    assert model_default.force_passive.__dict__ == ForcePassiveHillType().__dict__
-    assert model_default.force_active.__dict__ == ForceActiveHillType().__dict__
-    assert model_default.force_damping.__dict__ == ForceDampingConstant().__dict__
-    assert model_default.force_velocity.__dict__ == ForceVelocityHillType().__dict__
+    assert model_default._force_passive.__dict__ == ForcePassiveHillType().__dict__
+    assert model_default._force_active.__dict__ == ForceActiveHillType().__dict__
+    assert model_default._force_damping.__dict__ == ForceDampingConstant().__dict__
+    assert model_default._force_velocity.__dict__ == ForceVelocityHillType().__dict__
 
 
-def test_muscle_model_hill_rigid_tendon_normalize_muscle_length():
+def test_muscle_model_hill_rigid_tendon_normalize_muscle_fiber_length():
     optimal_length = 0.123
     model = MuscleModelHillRigidTendon(
         name="Dummy", maximal_force=123, optimal_length=optimal_length, tendon_slack_length=0.123
     )
 
     fiber_length = 0.456
-    assert_almost_equal(model.normalize_muscle_length(fiber_length), fiber_length / optimal_length)
+    assert_almost_equal(model.normalize_muscle_fiber_length(fiber_length), fiber_length / optimal_length)
 
 
-def test_muscle_model_hill_rigid_tendon_normalize_muscle_velocity():
+def test_muscle_model_hill_rigid_tendon_normalize_muscle_fiber_velocity():
     maximal_velocity = 0.456
     model = MuscleModelHillRigidTendon(
         name="Dummy",
@@ -75,7 +75,7 @@ def test_muscle_model_hill_rigid_tendon_normalize_muscle_velocity():
     )
 
     fiber_velocity = 0.789
-    assert_almost_equal(model.normalize_muscle_velocity(fiber_velocity), fiber_velocity / maximal_velocity)
+    assert_almost_equal(model.normalize_muscle_fiber_velocity(fiber_velocity), fiber_velocity / maximal_velocity)
 
 
 def test_muscle_model_hill_rigid_tendon_normalize_tendon_length():

@@ -7,7 +7,8 @@ from .force_active import ForceActiveHillType
 from .force_damping import ForceDampingConstant
 from .force_passive import ForcePassiveHillType
 from .force_velocity import ForceVelocityHillType
-from ..muscle_model_abstract import MuscleModelAbstract
+from ..muscle_model_abstract import MuscleModelAbstract, ComputeMuscleFiberLengthCallable
+from ..compute_muscle_fiber_length import ComputeMuscleFiberLengthRigidTendon
 
 """
 Compute the pennation angle
@@ -62,9 +63,9 @@ Compute the normalized force from the force-velocity relationship
 
 Parameters
 ----------
-normalized_muscle_length: MX
+normalized_muscle_fiber_length: MX
     The normalized muscle length
-normalized_muscle_velocity: MX
+normalized_muscle_fiber_velocity: MX
     The normalized muscle velocity
 
 Returns
@@ -80,7 +81,7 @@ Compute the normalized force from the damping
 
 Parameters
 ----------
-normalized_muscle_velocity: MX
+normalized_muscle_fiber_velocity: MX
     The normalized muscle velocity
 
 Returns
@@ -104,6 +105,7 @@ class MuscleModelHillRigidTendon(MuscleModelAbstract):
         force_active: ForceActiveCallable = ForceActiveHillType(),
         force_velocity: ForceVelocityCallable = ForceVelocityHillType(),
         force_damping: ForceDampingCallable = ForceDampingConstant(),
+        compute_muscle_fiber_length: ComputeMuscleFiberLengthCallable = ComputeMuscleFiberLengthRigidTendon(),
     ):
         """
         Parameters
@@ -129,37 +131,28 @@ class MuscleModelHillRigidTendon(MuscleModelAbstract):
         force_damping: ForceDampingCallable
             The damping function
         """
-        super().__init__(name=name)
-
-        if maximal_force < 0:
-            raise ValueError("The maximal force must be positive")
-        self.maximal_force = maximal_force
-
-        if optimal_length < 0:
-            raise ValueError("The optimal length must be positive")
-        self.optimal_length = optimal_length
-
-        if tendon_slack_length < 0:
-            raise ValueError("The tendon slack length must be positive")
-        self.tendon_slack_length = tendon_slack_length
-
-        if maximal_velocity < 0:
-            raise ValueError("The maximal velocity must be positive")
-        self.maximal_velocity = maximal_velocity
+        super().__init__(
+            name=name,
+            maximal_force=maximal_force,
+            optimal_length=optimal_length,
+            tendon_slack_length=tendon_slack_length,
+            maximal_velocity=maximal_velocity,
+            compute_muscle_fiber_length=compute_muscle_fiber_length,
+        )
 
         self.pennation_angle = pennation_angle
 
-        self.force_passive = force_passive
-        self.force_active = force_active
-        self.force_velocity = force_velocity
-        self.force_damping = force_damping
+        self._force_passive = force_passive
+        self._force_active = force_active
+        self._force_velocity = force_velocity
+        self._force_damping = force_damping
 
     @override
-    def normalize_muscle_length(self, muscle_fiber_length: MX) -> MX:
+    def normalize_muscle_fiber_length(self, muscle_fiber_length: MX) -> MX:
         return muscle_fiber_length / self.optimal_length
 
     @override
-    def normalize_muscle_velocity(self, muscle_fiber_velocity: MX) -> MX:
+    def normalize_muscle_fiber_velocity(self, muscle_fiber_velocity: MX) -> MX:
         return muscle_fiber_velocity / self.maximal_velocity
 
     @override
@@ -169,14 +162,14 @@ class MuscleModelHillRigidTendon(MuscleModelAbstract):
     @override
     def compute_muscle_force(self, activation: MX, muscle_fiber_length: MX, muscle_fiber_velocity: MX) -> MX:
         # Get the normalized muscle length and velocity
-        normalized_length = self.normalize_muscle_length(muscle_fiber_length)
-        normalized_velocity = self.normalize_muscle_velocity(muscle_fiber_velocity)
+        normalized_length = self.normalize_muscle_fiber_length(muscle_fiber_length)
+        normalized_velocity = self.normalize_muscle_fiber_velocity(muscle_fiber_velocity)
 
         # Compute the passive, active, velocity and damping factors
-        force_passive = self.force_passive(normalized_length)
-        force_active = self.force_active(normalized_length)
-        force_velocity = self.force_velocity(normalized_velocity)
-        force_damping = self.force_damping(normalized_velocity)
+        force_passive = self._force_passive(normalized_length)
+        force_active = self._force_active(normalized_length)
+        force_velocity = self._force_velocity(normalized_velocity)
+        force_damping = self._force_damping(normalized_velocity)
 
         return self.pennation_angle(
             muscle_fiber_length,

@@ -5,6 +5,7 @@ from .force_velocity import ForceVelocityHillType
 from .pennation_angle import PennationAngleConstant, PennationAngleWrtMuscleFiberLength
 
 from .muscle_model_hill_rigid_tendon import MuscleModelHillRigidTendon
+from .muscle_model_hill_flexible_tendon import MuscleModelHillFlexibleTendon
 
 __all__ = [
     ForceActiveHillType.__name__,
@@ -16,4 +17,5 @@ __all__ = [
     PennationAngleConstant.__name__,
     PennationAngleWrtMuscleFiberLength.__name__,
     MuscleModelHillRigidTendon.__name__,
+    MuscleModelHillFlexibleTendon.__name__,
 ]

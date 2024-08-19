@@ -1,9 +1,9 @@
 from functools import partial
 from typing import Callable
 
-from casadi import MX
+from casadi import MX, vertcat
 from matplotlib import pyplot as plt
-from musculotendon_ocp import MuscleBiorbdModel, MuscleModelHillRigidTendon
+from musculotendon_ocp import MuscleBiorbdModel, MuscleModelHillFlexibleTendon, ComputeMuscleFiberLengthAsVariable
 import numpy as np
 from scipy.integrate import solve_ivp
 
@@ -40,24 +40,39 @@ def compute_muscle_fiber_velocities(model: MuscleBiorbdModel, all_q: np.ndarray,
 
 
 def dynamics(_, x, dynamics_func: Callable, model: MuscleBiorbdModel, activations: np.ndarray) -> np.ndarray:
-    q = x[: model.nb_q]
-    qdot = x[model.nb_q :]
+    fiber_lengths = x[: model.nb_muscles]
+    q = x[model.nb_muscles : model.nb_muscles + model.nb_q]
+    qdot = x[model.nb_muscles + model.nb_q :]
 
-    qddot = model.evaluate_function(dynamics_func, activations=activations, q=q, qdot=qdot).__array__()[:, 0]
+    fiber_lengths_dot, qddot = model.evaluate_function(
+        dynamics_func, activations=activations, q=q, qdot=qdot, muscle_lengths=fiber_lengths
+    ).__array__()[:, 0]
 
-    return np.concatenate((qdot, qddot))
+    return np.concatenate((fiber_lengths_dot, qdot, qddot))
 
 
-def qddot_from_muscles(model: MuscleBiorbdModel, activations: MX, q: MX, qdot: MX) -> MX:
+def dynamics_as_functions(model: MuscleBiorbdModel, activations: MX, q: MX, qdot: MX) -> MX:
+    # TODO RENDU ICI!!! Compléter après l'autre TODO
+    fiber_lengths_dot = model.muscle_fiber_velocities(
+        model.muscle_fiber_len, activation=activations, muscle_fiber_length=fiber_lengths
+    )
+
     tau = model.muscle_joint_torque(activations, q, qdot)
-    return model.forward_dynamics(q, qdot, tau)
+    qddot = model.forward_dynamics(q, qdot, tau)
+    return fiber_lengths_dot, qddot
 
 
 def main():
     model = MuscleBiorbdModel(
         "musculotendon_ocp/rigidbody_models/models/one_muscle_holding_a_cube.bioMod",
         muscles=[
-            MuscleModelHillRigidTendon(name="Mus1", maximal_force=500, optimal_length=0.1, tendon_slack_length=0.16),
+            MuscleModelHillFlexibleTendon(
+                name="Mus1",
+                maximal_force=500,
+                optimal_length=0.1,
+                tendon_slack_length=0.16,
+                compute_muscle_fiber_length=ComputeMuscleFiberLengthAsVariable(),
+            ),
         ],
     )
 
@@ -66,13 +81,17 @@ def main():
     q = np.ones(model.nb_q) * -0.2
     qdot = np.zeros(model.nb_qdot)
     activations = np.ones(model.nb_muscles) * 1.0
+    initial_muscle_fiber_length = np.array(
+        model.function_to_dm(model.muscle_tendon_lengths, q=q)
+        - vertcat(*[mus.tendon_slack_length for mus in model.muscles])
+    )[:, 0]
 
     # Request the integration of the equations of motion
-    dynamics_func = model.to_casadi_function(partial(qddot_from_muscles, model=model), "activations", "q", "qdot")
+    dynamics_func = model.to_casadi_function(partial(dynamics_as_functions, model=model), "activations", "q", "qdot")
     integrated = solve_ivp(
         partial(dynamics, dynamics_func=dynamics_func, model=model, activations=activations),
         t_span,
-        np.concatenate((q, qdot)),
+        np.concatenate((initial_muscle_fiber_length, q, qdot)),
         t_eval=t,
     ).y
     q_int = integrated[: model.nb_q, :]

@@ -393,7 +393,6 @@ class BiorbdModel_musculotendon_equilibrium(BiorbdModel):
         vm_normalized_sym = MX.sym("vm_normalized")
         tendon_length_normalized_sym = MX.sym("tendon_length_normalized")
         muscle_length_normalized_sym = MX.sym("muscle_length_normalized")
-        q_sym = MX.sym("q")
         act_sym = MX.sym("act")
 
         Ft = MaximalForce @ self.ft(tendon_length_normalized_sym)
@@ -414,7 +413,7 @@ class BiorbdModel_musculotendon_equilibrium(BiorbdModel):
         To have more unknown values to calculate, need to use the vertcat function.
         """
         f_vm_normalized = Function(
-            "f", [vm_normalized_sym, muscle_length_normalized_sym, tendon_length_normalized_sym, q_sym, act_sym], [g]
+            "f", [vm_normalized_sym, muscle_length_normalized_sym, tendon_length_normalized_sym, act_sym], [g]
         )
         newton_method = rootfinder(
             "newton_method",

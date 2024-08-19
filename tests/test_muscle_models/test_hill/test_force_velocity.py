@@ -11,14 +11,17 @@ def test_force_velocity_hill_type():
     assert force_velocity_model.d4 == 0.886
 
     # Test exact values
-    assert_almost_equal(force_velocity_model(normalized_muscle_velocity=0.0), 1.002320622548512)  # Isometric
+    # Isometric contraction
+    assert_almost_equal(force_velocity_model(normalized_muscle_fiber_velocity=0.0), 1.002320622548512)
 
-    assert_almost_equal(force_velocity_model(normalized_muscle_velocity=0.5), 1.5850003902837804)  # Slow eccentric
-    assert_almost_equal(force_velocity_model(normalized_muscle_velocity=1.0), 1.7889099602998804)  # Fast eccentric
+    # Slow and Fast eccentric contraction
+    assert_almost_equal(force_velocity_model(normalized_muscle_fiber_velocity=0.5), 1.5850003902837804)
+    assert_almost_equal(force_velocity_model(normalized_muscle_fiber_velocity=1.0), 1.7889099602998804)
 
-    assert_almost_equal(force_velocity_model(normalized_muscle_velocity=-0.5), 0.2438336294197121)  # Slow concentric
-    assert_almost_equal(force_velocity_model(normalized_muscle_velocity=-1.0), 0.012081678112282557)  # Fast concentric
-    assert_almost_equal(force_velocity_model(normalized_muscle_velocity=-2.0), -0.21490297384011525)  # Supra concentric
+    # Slow, Fast and Supra concentric contraction
+    assert_almost_equal(force_velocity_model(normalized_muscle_fiber_velocity=-0.5), 0.2438336294197121)
+    assert_almost_equal(force_velocity_model(normalized_muscle_fiber_velocity=-1.0), 0.012081678112282557)
+    assert_almost_equal(force_velocity_model(normalized_muscle_fiber_velocity=-2.0), -0.21490297384011525)
 
     # Test values based on qualitative behavior (increasing S-shaped function)
     assert force_velocity_model(0.0) < force_velocity_model(0.5)

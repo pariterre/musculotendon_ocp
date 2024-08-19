@@ -18,5 +18,12 @@
             "program": "${workspaceFolder}/scripts/validate_velocity_rigid_tendon.py",
             "console": "integratedTerminal",
         },
+        {
+            "name": "Validate flexible velocity",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/validate_velocity_flexible_tendon.py",
+            "console": "integratedTerminal",
+        },
     ]
 }

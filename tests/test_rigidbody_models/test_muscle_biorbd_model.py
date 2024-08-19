@@ -2,6 +2,7 @@ import os
 import re
 
 from musculotendon_ocp import MuscleBiorbdModel, MuscleModelHillRigidTendon
+import numpy as np
 import pytest
 
 model_path = (
@@ -48,3 +49,42 @@ def test_muscle_biorbd_model_muscle_jacobian():
         ),
     ):
         model_none.muscle_length_jacobian(q=[])
+
+
+def test_muscle_biorbd_model_muscle_fiber_length():
+    model = MuscleBiorbdModel(
+        model_path,
+        muscles=[
+            MuscleModelHillRigidTendon(name="Mus1", maximal_force=500, optimal_length=0.1, tendon_slack_length=0.123),
+        ],
+    )
+
+    lengths = model.function_to_dm(model.muscle_fiber_lengths, q=np.array([-0.3]))
+    assert lengths.shape == (1, 1)
+    np.testing.assert_almost_equal(lengths, [[0.177]])  # q + tendon_slack_length
+
+
+def test_muscle_biorbd_model_muscle_fiber_velocity():
+    model = MuscleBiorbdModel(
+        model_path,
+        muscles=[
+            MuscleModelHillRigidTendon(name="Mus1", maximal_force=500, optimal_length=0.1, tendon_slack_length=0.123),
+        ],
+    )
+
+    velocities = model.function_to_dm(model.muscle_fiber_velocities, q=np.array([-0.3]), qdot=np.array([0.2]))
+    assert velocities.shape == (1, 1)
+    np.testing.assert_almost_equal(velocities, [[-0.2]])
+
+
+def test_muscle_biorbd_model_muscle_tendon_length_jacobian():
+    model = MuscleBiorbdModel(
+        model_path,
+        muscles=[
+            MuscleModelHillRigidTendon(name="Mus1", maximal_force=500, optimal_length=0.1, tendon_slack_length=0.123),
+        ],
+    )
+
+    jac = model.function_to_dm(model.muscle_tendon_length_jacobian, q=np.array([-0.3]))
+    assert jac.shape == (1, 1)
+    np.testing.assert_almost_equal(jac, [[-1.0]])
