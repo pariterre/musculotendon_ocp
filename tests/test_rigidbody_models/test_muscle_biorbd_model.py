@@ -1,22 +1,33 @@
+import os
 import re
 
 from musculotendon_ocp import MuscleBiorbdModel, MuscleModelHillRigidTendon
 import pytest
 
-model_path = "musculotendon_ocp/rigidbody_models/models/one_muscle_holding_a_cube.bioMod"
+model_path = (
+    (os.getcwd() + "/musculotendon_ocp/rigidbody_models/models/one_muscle_holding_a_cube.bioMod")
+    .replace("\\", "/")
+    .replace("c:/", "C:/")
+)
 
 
 def test_muscle_biorbd_model_construction():
     with pytest.raises(ValueError, match="Muscle Wrong muscle was not found in the biorbd model"):
         MuscleBiorbdModel(
             model_path,
-            muscles=[MuscleModelHillRigidTendon(name="Wrong muscle", maximal_force=500, optimal_length=0.1)],
+            muscles=[
+                MuscleModelHillRigidTendon(
+                    name="Wrong muscle", maximal_force=500, optimal_length=0.1, tendon_slack_length=0.123
+                )
+            ],
         )
 
     # Can load a model with the right muscles
     model_all = MuscleBiorbdModel(
         model_path,
-        muscles=[MuscleModelHillRigidTendon(name="Mus1", maximal_force=500, optimal_length=0.1)],
+        muscles=[
+            MuscleModelHillRigidTendon(name="Mus1", maximal_force=500, optimal_length=0.1, tendon_slack_length=0.123)
+        ],
     )
     assert model_all.nb_muscles == 1
 

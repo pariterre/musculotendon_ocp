@@ -97,6 +97,7 @@ class MuscleModelHillRigidTendon(MuscleModelAbstract):
         name: str,
         maximal_force: MX,
         optimal_length: MX,
+        tendon_slack_length: MX,
         maximal_velocity: MX = 5.0,
         pennation_angle: PennationAngleCallable = PennationAngleConstant(),
         force_passive: ForcePassiveCallable = ForcePassiveHillType(),
@@ -113,6 +114,8 @@ class MuscleModelHillRigidTendon(MuscleModelAbstract):
             The maximal force the muscle can produce
         optimal_length: MX
             The optimal length of the muscle
+        tendon_slack_length: MX
+            The tendon slack length
         maximal_velocity: MX
             The maximal velocity of the muscle
         pennation_angle: PennationAngleCallable
@@ -131,9 +134,15 @@ class MuscleModelHillRigidTendon(MuscleModelAbstract):
         if maximal_force < 0:
             raise ValueError("The maximal force must be positive")
         self.maximal_force = maximal_force
+
         if optimal_length < 0:
             raise ValueError("The optimal length must be positive")
         self.optimal_length = optimal_length
+
+        if tendon_slack_length < 0:
+            raise ValueError("The tendon slack length must be positive")
+        self.tendon_slack_length = tendon_slack_length
+
         if maximal_velocity < 0:
             raise ValueError("The maximal velocity must be positive")
         self.maximal_velocity = maximal_velocity

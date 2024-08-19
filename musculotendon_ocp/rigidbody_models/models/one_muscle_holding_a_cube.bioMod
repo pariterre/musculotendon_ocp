@@ -51,14 +51,8 @@ musclegroup musclegroup1
 endmusclegroup
 
     muscle    Mus1
-        Type    degroote
+        Type    idealizedActuator
         musclegroup    musclegroup1
         OriginPosition    0 0 0
         InsertionPosition    0 0 0
-        optimalLength   0.10
-        maximalForce    798.520
-        tendonSlackLength    0.16
-        pennationAngle   0 // 0.2094
-        maxVelocity    5
     endmuscle
-
