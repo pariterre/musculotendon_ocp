@@ -9,6 +9,7 @@ from .force_passive import ForcePassiveHillType
 from .force_velocity import ForceVelocityHillType
 from ..muscle_model_abstract import MuscleModelAbstract, ComputeMuscleFiberLengthCallable
 from ..compute_muscle_fiber_length import ComputeMuscleFiberLengthRigidTendon
+from ..compute_muscle_fiber_velocity import ComputeMuscleFiberVelocityRigidTendon
 
 """
 Compute the pennation angle
@@ -106,6 +107,7 @@ class MuscleModelHillRigidTendon(MuscleModelAbstract):
         force_velocity: ForceVelocityCallable = ForceVelocityHillType(),
         force_damping: ForceDampingCallable = ForceDampingConstant(),
         compute_muscle_fiber_length: ComputeMuscleFiberLengthCallable = ComputeMuscleFiberLengthRigidTendon(),
+        compute_muscle_fiber_velocity: ComputeMuscleFiberLengthCallable = ComputeMuscleFiberVelocityRigidTendon(),
     ):
         """
         Parameters
@@ -138,6 +140,7 @@ class MuscleModelHillRigidTendon(MuscleModelAbstract):
             tendon_slack_length=tendon_slack_length,
             maximal_velocity=maximal_velocity,
             compute_muscle_fiber_length=compute_muscle_fiber_length,
+            compute_muscle_fiber_velocity=compute_muscle_fiber_velocity,
         )
 
         self.pennation_angle = pennation_angle

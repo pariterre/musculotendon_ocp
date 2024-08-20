@@ -1,6 +1,5 @@
 import biorbd_casadi as biorbd
 from casadi import MX, Function, rootfinder
-from scipy.integrate import solve_ivp
 
 from .muscle_model_abstract import MuscleModelAbstract
 
@@ -20,6 +19,7 @@ class ComputeMuscleFiberLengthRigidTendon:
         q: MX,
         qdot: MX,
     ) -> biorbd.MX:
+        biorbd_muscle.updateOrientations(model_kinematic_updated, q)
         muscle_tendon_length = biorbd_muscle.musculoTendonLength(model_kinematic_updated, q).to_mx()
 
         # TODO Include the pennation angle?
@@ -65,34 +65,25 @@ class ComputeMuscleFiberLengthInstantaneousEquilibrium:
         q: MX,
         qdot: MX,
     ) -> biorbd.MX:
-        raise NotImplementedError("This method is not implemented yet, and may not even be possible")
         from .hill.muscle_model_hill_flexible_tendon import MuscleModelHillFlexibleTendon
 
         if not isinstance(muscle, MuscleModelHillFlexibleTendon):
             raise ValueError("The muscle model must be a flexible tendon to compute the instantaneous equilibrium")
 
-        # muscle_fiber_length = MX.sym("muscle_fiber_length", 1, 1)
-        # muscle_fiber_velocity = MX.sym("muscle_fiber_velocity", 1, 1)
+        muscle_tendon_length = biorbd_muscle.musculoTendonLength(model_kinematic_updated, q).to_mx()
+        muscle_fiber_length = MX.sym("muscle_fiber_length", 1, 1)
+        muscle_fiber_velocity = MX.sym("muscle_fiber_velocity", 1, 1)
 
-        # pennated_muscle_fiber_length = muscle.pennation_angle(muscle_fiber_length, muscle_fiber_length)
-        # tendon_length = (
-        #     biorbd_muscle.musculoTendonLength(model_kinematic_updated, q).to_mx() - pennated_muscle_fiber_length
-        # )
+        tendon_length = muscle.compute_tendon_length(
+            muscle_tendon_length=muscle_tendon_length, muscle_fiber_length=muscle_fiber_length
+        )
 
-        # force_tendon = muscle.compute_tendon_force(tendon_length=tendon_length)
-        # force_muscle = muscle.compute_muscle_force(
-        #     activation=activation, muscle_fiber_length=muscle_fiber_length, muscle_fiber_velocity=muscle_fiber_velocity
-        # )
-        def dynamics(t, x):
-            pennated_muscle_fiber_length = muscle.pennation_angle(x, x)
-            tendon_length = (
-                biorbd_muscle.musculoTendonLength(model_kinematic_updated, q).to_mx() - pennated_muscle_fiber_length
-            )
-            muscle.compute_muscle_fiber_length_derivative(activation, x, tendon_length)
+        force_tendon = muscle.compute_tendon_force(tendon_length=tendon_length)
+        force_muscle = muscle.compute_muscle_force(
+            activation=activation, muscle_fiber_length=muscle_fiber_length, muscle_fiber_velocity=muscle_fiber_velocity
+        )
 
-        solve_ivp(dynamics, t_span=(0, 1), y0=[0]).y
-
-        equal_forces = Function(
+        equality_constraint = Function(
             "g", [muscle_fiber_velocity, muscle_fiber_length, activation, q], [force_muscle - force_tendon]
         )
 
@@ -101,7 +92,7 @@ class ComputeMuscleFiberLengthInstantaneousEquilibrium:
         newton_method = rootfinder(
             "newton_method",
             "newton",
-            equal_forces,
-            {"error_on_fail": True, "enable_fd": False, "print_in": False, "print_out": False, "max_num_dir": 10},
+            equality_constraint,
+            {"error_on_fail": False, "enable_fd": False, "print_in": False, "print_out": False, "max_num_dir": 10},
         )
-        return newton_method()["o0"]
+        return newton_method(i0=muscle_fiber_velocity, i1=muscle_fiber_length, i2=activation, i3=q)["o0"]

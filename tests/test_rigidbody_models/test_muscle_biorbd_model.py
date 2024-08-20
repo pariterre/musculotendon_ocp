@@ -59,7 +59,9 @@ def test_muscle_biorbd_model_muscle_fiber_length():
         ],
     )
 
-    lengths = model.function_to_dm(model.muscle_fiber_lengths, q=np.array([-0.3]))
+    lengths = model.function_to_dm(
+        model.muscle_fiber_lengths, activations=np.array([0.5]), q=np.array([-0.3]), qdot=np.array([0.1])
+    )
     assert lengths.shape == (1, 1)
     np.testing.assert_almost_equal(lengths, [[0.177]])  # q + tendon_slack_length
 
@@ -72,7 +74,10 @@ def test_muscle_biorbd_model_muscle_fiber_velocity():
         ],
     )
 
-    velocities = model.function_to_dm(model.muscle_fiber_velocities, q=np.array([-0.3]), qdot=np.array([0.2]))
+    model.muscle_fiber_velocities(activations=np.array([0.5]), q=np.array([-0.3]), qdot=np.array([0.2]))
+    velocities = model.function_to_dm(
+        model.muscle_fiber_velocities, activations=np.array([0.5]), q=np.array([-0.3]), qdot=np.array([0.2])
+    )
     assert velocities.shape == (1, 1)
     np.testing.assert_almost_equal(velocities, [[-0.2]])
 

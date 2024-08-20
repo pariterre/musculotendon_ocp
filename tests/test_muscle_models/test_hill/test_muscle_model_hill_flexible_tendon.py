@@ -78,19 +78,6 @@ def test_muscle_model_hill_flexible_tendon_normalize_tendon_length():
     assert_almost_equal(model.normalize_tendon_length(tendon_length=0.246), 2.0)
 
 
-def test_muscle_model_hill_flexible_tendon_compute_muscle_length_derivative():
-    model = MuscleModelHillFlexibleTendon(
-        name="Dummy", maximal_force=123, optimal_length=0.123, tendon_slack_length=0.123
-    )
-
-    muscle_fiber_velocity = model.compute_muscle_fiber_length_derivative(
-        activation=0.123, muscle_fiber_length=0.09, tendon_length=0.124
-    )
-
-    assert muscle_fiber_velocity.shape == (1, 1)
-    assert_almost_equal(muscle_fiber_velocity, -3.0629540229792394)
-
-
 def test_muscle_model_hill_flexible_tendon_compute_tendon_force():
     model = MuscleModelHillFlexibleTendon(
         name="Dummy", maximal_force=123, optimal_length=0.123, tendon_slack_length=0.123

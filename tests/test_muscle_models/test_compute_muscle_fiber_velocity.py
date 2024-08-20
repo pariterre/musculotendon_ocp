@@ -17,6 +17,7 @@ model_path = (
 )
 
 
+# TODO CHANGE THESE TESTS
 def test_compute_muscle_fiber_length_rigid_tendon():
     mus = MuscleModelHillRigidTendon(name="Mus1", maximal_force=500, optimal_length=0.1, tendon_slack_length=0.123)
     model = MuscleBiorbdModel(model_path, muscles=[mus])

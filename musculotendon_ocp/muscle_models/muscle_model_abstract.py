@@ -30,6 +30,38 @@ MX
 type ComputeMuscleFiberLengthCallable = Callable[[MuscleModelAbstract, biorbd.Model, biorbd.Muscle, MX, MX, MX], MX]
 
 
+"""
+Compute the muscle velocity
+
+Parameters
+----------
+muscle: MuscleModelAbstract
+    The muscle model
+model_kinematic_updated: biorbd.Model
+    The updated biorbd model up to q
+biorbd_muscle: biorbd.Muscle
+    The biorbd muscle associated with the muscle model
+activation: MX
+    The muscle activation
+q: MX
+    The generalized coordinates
+qdot: MX
+    The generalized velocities
+muscle_fiber_length: MX
+    The muscle fiber length
+tendon_length: MX
+    The tendon length
+
+Returns
+-------
+MX
+    The muscle length
+"""
+type ComputeMuscleFiberVelocityCallable = Callable[
+    [MuscleModelAbstract, biorbd.Model, biorbd.Muscle, MX, MX, MX, MX, MX], MX
+]
+
+
 class MuscleModelAbstract(ABC):
     def __init__(
         self,
@@ -39,6 +71,7 @@ class MuscleModelAbstract(ABC):
         tendon_slack_length: MX,
         maximal_velocity: MX,
         compute_muscle_fiber_length: ComputeMuscleFiberLengthCallable,
+        compute_muscle_fiber_velocity: ComputeMuscleFiberVelocityCallable,
     ):
         self._name = name
 
@@ -59,6 +92,7 @@ class MuscleModelAbstract(ABC):
         self.maximal_velocity = maximal_velocity
 
         self.compute_muscle_fiber_length = compute_muscle_fiber_length
+        self.compute_muscle_fiber_velocity = compute_muscle_fiber_velocity
 
     @property
     def name(self) -> str:
@@ -134,6 +168,24 @@ class MuscleModelAbstract(ABC):
         MX
             The muscle force corresponding to the given muscle activation, length and velocity
         """
+
+    def compute_tendon_length(self, muscle_tendon_length: MX, muscle_fiber_length: MX) -> MX:
+        """
+        Compute the tendon length
+
+        Parameters
+        ----------
+        muscle_tendon_length: MX
+            The length of the muscle-tendon unit
+        muscle_fiber_length: MX
+            The length of the muscle fibers
+
+        Returns
+        -------
+        MX
+            The tendon length corresponding to the given muscle-tendon length and muscle fiber length
+        """
+        return muscle_tendon_length - muscle_fiber_length
 
     @abstractmethod
     def compute_tendon_force(self, tendon_length: MX) -> MX:
@@ -220,13 +272,18 @@ class MuscleModelAbstract(ABC):
 
         def get_value_from_kwargs(key, default):
             if key in kwargs:
-                return kwargs[key]
+                element = kwargs[key]
+                del kwargs[key]
+                return element
             return default
 
         activation = get_value_from_kwargs("activation", 0)
         muscle_fiber_length = get_value_from_kwargs("muscle_fiber_length", 0)
         muscle_fiber_velocity = get_value_from_kwargs("muscle_fiber_velocity", 0)
         tendon_length = get_value_from_kwargs("tendon_length", 0)
+
+        if kwargs:
+            raise ValueError(f"Unknown arguments: {kwargs.keys()}")
 
         return function_to_evaluate(
             activation=activation,
@@ -244,7 +301,7 @@ class MuscleModelAbstract(ABC):
         mx_to_evaluate: Callable
             The CasADi MX to evaluate.
         **kwargs
-            The values of the variables at which to evaluate the function, limited to q, qdot, lm, act, vm. The
+            The values of the variables at which to evaluate the function, limited to q, qdot, lm, activations, vm. The
             default values are 0.
 
         Returns
