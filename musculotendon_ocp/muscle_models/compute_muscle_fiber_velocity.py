@@ -2,6 +2,7 @@ import biorbd_casadi as biorbd
 from casadi import MX, Function, rootfinder
 
 from .muscle_model_abstract import MuscleModelAbstract
+from .compute_muscle_fiber_length import ComputeMuscleFiberLengthAsVariable
 
 
 class ComputeMuscleFiberVelocityRigidTendon:
@@ -50,14 +51,15 @@ class ComputeMuscleFiberVelocityFlexibleTendon:
         muscle_fiber_length: MX,
         tendon_length: MX,
     ) -> biorbd.MX:
+        if not isinstance(muscle.compute_muscle_fiber_length, ComputeMuscleFiberLengthAsVariable):
+            raise ValueError("The compute_muscle_fiber_length must be a ComputeMuscleFiberLengthAsVariable")
 
         force_tendon = muscle.compute_tendon_force(tendon_length=tendon_length)
         force_muscle = muscle.compute_muscle_force(
             activation=activation, muscle_fiber_length=muscle_fiber_length, muscle_fiber_velocity=self.mx_variable
         )
 
-        # TODO RENDU ICI!
-        muscle_fiber_length_mx = MX.sym("muscle_fiber_length", 1, 1)
+        muscle_fiber_length_mx = muscle.compute_muscle_fiber_length.mx_variable
         equality_constraint = Function(
             "g", [self.mx_variable, muscle_fiber_length_mx, activation, q], [force_muscle - force_tendon]
         )
@@ -70,4 +72,5 @@ class ComputeMuscleFiberVelocityFlexibleTendon:
             equality_constraint,
             {"error_on_fail": False, "enable_fd": False, "print_in": False, "print_out": False, "max_num_dir": 10},
         )
+
         return newton_method(i0=self.mx_variable, i1=muscle_fiber_length, i2=activation, i3=q)["o0"]

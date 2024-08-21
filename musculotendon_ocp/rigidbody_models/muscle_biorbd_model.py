@@ -5,7 +5,10 @@ from bioptim import BiorbdModel, OptimalControlProgram, NonLinearProgram, Config
 from casadi import MX, DM, Function, vertcat
 
 from ..muscle_models.muscle_model_abstract import MuscleModelAbstract
-from ..muscle_models.compute_muscle_fiber_length import ComputeMuscleFiberLengthAsVariable
+from ..muscle_models.compute_muscle_fiber_length import (
+    ComputeMuscleFiberLengthAsVariable,
+    ComputeMuscleFiberLengthInstantaneousEquilibrium,
+)
 from ..muscle_models.compute_muscle_fiber_velocity import ComputeMuscleFiberVelocityFlexibleTendon
 
 
@@ -133,6 +136,49 @@ class MuscleBiorbdModel(BiorbdModel):
         lengths = MX.zeros(self.nb_muscles, 1)
         for index, muscle in enumerate(self.muscles):
             lengths[index] = muscle.compute_muscle_fiber_length(
+                muscle=muscle,
+                model_kinematic_updated=updated_model,
+                biorbd_muscle=self.model.muscle(self._muscle_index_to_biorbd_model[index]),
+                activation=activations[index],
+                q=q,
+                qdot=qdot,
+            )
+
+        return lengths
+
+    def muscle_fiber_lengths_equilibrated(self, activations: MX, q: MX, qdot: MX) -> MX:
+        """
+        Compute the muscle lengths normally for the RigidTendon but as if the muscle and tendon were instantaneous
+        equilibrium for the FlexibleTendon
+
+        Parameters
+        ----------
+        activations: MX
+            The muscle activations vector of size (n_muscles x 1)
+        q: MX
+            The generalized coordinates vector of size (n_dof x 1)
+        qdot: MX
+            The generalized velocities vector of size (n_dof x 1)
+
+        Returns
+        -------
+        MX
+            The muscle lengths vector of size (n_muscles x 1)
+        """
+
+        updated_model = self.model.UpdateKinematicsCustom(q)
+
+        lengths = MX.zeros(self.nb_muscles, 1)
+        for index, muscle in enumerate(self.muscles):
+            computer = (
+                ComputeMuscleFiberLengthInstantaneousEquilibrium(
+                    mx_symbolic=muscle.compute_muscle_fiber_length.mx_variable
+                )
+                if isinstance(muscle.compute_muscle_fiber_length, ComputeMuscleFiberLengthAsVariable)
+                else muscle.compute_muscle_fiber_length
+            )
+
+            lengths[index] = computer(
                 muscle=muscle,
                 model_kinematic_updated=updated_model,
                 biorbd_muscle=self.model.muscle(self._muscle_index_to_biorbd_model[index]),

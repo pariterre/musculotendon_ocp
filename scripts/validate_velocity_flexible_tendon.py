@@ -99,24 +99,23 @@ def main():
         muscles=[
             MuscleModelHillFlexibleTendon(
                 name="Mus1",
-                maximal_force=500,
+                maximal_force=1000,
                 optimal_length=0.1,
                 tendon_slack_length=0.16,
-                force_damping=ForceDampingLinear(factor=0.1),
-                # compute_muscle_fiber_length=ComputeMuscleFiberLengthAsVariable(),
+                force_damping=ForceDampingLinear(factor=1),
+                compute_muscle_fiber_length=ComputeMuscleFiberLengthAsVariable(),
                 compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityFlexibleTendon(),
             ),
         ],
     )
 
-    t_span = (0, 0.1)
+    t_span = (0, 1.5)
     t = np.linspace(*t_span, 1000)
     q = np.ones(model.nb_q) * -0.24
     qdot = np.zeros(model.nb_qdot)
-    activations = np.ones(model.nb_muscles) * 0.6
+    activations = np.ones(model.nb_muscles) * 0.0
     initial_muscle_fiber_length = np.array(
-        model.function_to_dm(model.muscle_tendon_lengths, q=q)
-        - vertcat(*[mus.tendon_slack_length for mus in model.muscles])
+        model.function_to_dm(model.muscle_fiber_lengths_equilibrated, activations=activations, q=q, qdot=qdot)
     )[:, 0]
 
     # Request the integration of the equations of motion
@@ -151,6 +150,12 @@ def main():
     )
 
     # If the two methods are equivalent, the plot should be on top of each other
+    plt.figure("Generalized coordinates")
+    for q in q_int:
+        plt.plot(t, q)
+    plt.xlabel("Time (s)")
+    plt.ylabel("Generalized coordinate (rad)")
+
     plt.figure("Muscle lengths")
     for length in muscle_lengths:
         plt.plot(t, length)

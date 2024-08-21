@@ -48,7 +48,7 @@ class ComputeMuscleFiberLengthAsVariable:
         return self.mx_variable
 
 
-class ComputeMuscleFiberLengthInstantaneousEquilibrium:
+class ComputeMuscleFiberLengthInstantaneousEquilibrium(ComputeMuscleFiberLengthAsVariable):
     """
     This method computes the muscle fiber length using the instantaneous equilibrium between the muscle and tendon, that
     is finding the muscle fiber length that satisfies the equation:
@@ -70,21 +70,32 @@ class ComputeMuscleFiberLengthInstantaneousEquilibrium:
         if not isinstance(muscle, MuscleModelHillFlexibleTendon):
             raise ValueError("The muscle model must be a flexible tendon to compute the instantaneous equilibrium")
 
-        muscle_tendon_length = biorbd_muscle.musculoTendonLength(model_kinematic_updated, q).to_mx()
-        muscle_fiber_length = MX.sym("muscle_fiber_length", 1, 1)
-        muscle_fiber_velocity = MX.sym("muscle_fiber_velocity", 1, 1)
+        # Alias for the MX variables
+        muscle_fiber_length_mx = self.mx_variable
 
+        # Compute the tendon length
+        muscle_tendon_length = biorbd_muscle.musculoTendonLength(model_kinematic_updated, q).to_mx()
         tendon_length = muscle.compute_tendon_length(
-            muscle_tendon_length=muscle_tendon_length, muscle_fiber_length=muscle_fiber_length
+            muscle_tendon_length=muscle_tendon_length, muscle_fiber_length=muscle_fiber_length_mx
         )
 
+        # Compute the muscle and tendon forces
         force_tendon = muscle.compute_tendon_force(tendon_length=tendon_length)
         force_muscle = muscle.compute_muscle_force(
-            activation=activation, muscle_fiber_length=muscle_fiber_length, muscle_fiber_velocity=muscle_fiber_velocity
+            activation=activation,
+            muscle_fiber_length=muscle_fiber_length_mx,
+            muscle_fiber_velocity=0,
         )
 
+        # The muscle_fiber_length is found when it equates the muscle and tendon forces
         equality_constraint = Function(
-            "g", [muscle_fiber_velocity, muscle_fiber_length, activation, q], [force_muscle - force_tendon]
+            "g",
+            [
+                muscle_fiber_length_mx,
+                activation if isinstance(activation, MX) else MX.sym("dummy_activation"),
+                q if isinstance(q, MX) else MX.sym("dummy_q"),
+            ],
+            [force_muscle - force_tendon],
         )
 
         # Reminder: the first variable of the function is the unknown value that rootfinder tries to optimize.
@@ -95,4 +106,5 @@ class ComputeMuscleFiberLengthInstantaneousEquilibrium:
             equality_constraint,
             {"error_on_fail": False, "enable_fd": False, "print_in": False, "print_out": False, "max_num_dir": 10},
         )
-        return newton_method(i0=muscle_fiber_velocity, i1=muscle_fiber_length, i2=activation, i3=q)["o0"]
+        # Evaluate the muscle fiber length
+        return newton_method(i1=activation, i2=q)["o0"]
