@@ -100,14 +100,14 @@ class MuscleModelHillRigidTendon(MuscleModelAbstract):
         maximal_force: MX,
         optimal_length: MX,
         tendon_slack_length: MX,
-        maximal_velocity: MX = 5.0,
-        pennation_angle: PennationAngleCallable = PennationAngleConstant(),
-        force_passive: ForcePassiveCallable = ForcePassiveHillType(),
-        force_active: ForceActiveCallable = ForceActiveHillType(),
-        force_velocity: ForceVelocityCallable = ForceVelocityHillType(),
-        force_damping: ForceDampingCallable = ForceDampingConstant(),
-        compute_muscle_fiber_length: ComputeMuscleFiberLengthCallable = ComputeMuscleFiberLengthRigidTendon(),
-        compute_muscle_fiber_velocity: ComputeMuscleFiberLengthCallable = ComputeMuscleFiberVelocityRigidTendon(),
+        maximal_velocity: MX,
+        pennation_angle: PennationAngleCallable | None = None,
+        force_passive: ForcePassiveCallable | None = None,
+        force_active: ForceActiveCallable | None = None,
+        force_velocity: ForceVelocityCallable | None = None,
+        force_damping: ForceDampingCallable | None = None,
+        compute_muscle_fiber_length: ComputeMuscleFiberLengthCallable | None = None,
+        compute_muscle_fiber_velocity: ComputeMuscleFiberLengthCallable | None = None,
     ):
         """
         Parameters
@@ -133,6 +133,22 @@ class MuscleModelHillRigidTendon(MuscleModelAbstract):
         force_damping: ForceDampingCallable
             The damping function
         """
+        pennation_angle = PennationAngleConstant() if pennation_angle is None else pennation_angle
+        force_passive = ForcePassiveHillType() if force_passive is None else force_passive
+        force_active = ForceActiveHillType() if force_active is None else force_active
+        force_velocity = ForceVelocityHillType() if force_velocity is None else force_velocity
+        force_damping = ForceDampingConstant() if force_damping is None else force_damping
+        compute_muscle_fiber_length = (
+            ComputeMuscleFiberLengthRigidTendon()
+            if compute_muscle_fiber_length is None
+            else compute_muscle_fiber_length
+        )
+        compute_muscle_fiber_velocity = (
+            ComputeMuscleFiberVelocityRigidTendon()
+            if compute_muscle_fiber_velocity is None
+            else compute_muscle_fiber_velocity
+        )
+
         super().__init__(
             name=name,
             maximal_force=maximal_force,
@@ -160,7 +176,7 @@ class MuscleModelHillRigidTendon(MuscleModelAbstract):
 
     @override
     def normalize_tendon_length(self, tendon_length: MX) -> MX:
-        raise RuntimeError("The tendon length should not be normalized for this muscle model")
+        raise RuntimeError("The tendon length should not be normalized with a rigid tendon")
 
     @override
     def compute_muscle_force(self, activation: MX, muscle_fiber_length: MX, muscle_fiber_velocity: MX) -> MX:
@@ -180,5 +196,9 @@ class MuscleModelHillRigidTendon(MuscleModelAbstract):
         )
 
     @override
+    def compute_tendon_length(self, muscle_tendon_length: MX, muscle_fiber_length: MX) -> MX:
+        return self.tendon_slack_length
+
+    @override
     def compute_tendon_force(self, tendon_length: MX) -> MX:
-        return 0
+        return 0.0

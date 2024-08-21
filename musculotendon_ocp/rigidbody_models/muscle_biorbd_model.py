@@ -1,3 +1,4 @@
+from functools import cached_property
 from typing import Iterable, Callable, override, Any
 
 import biorbd_casadi as biorbd
@@ -24,6 +25,43 @@ class MuscleBiorbdModel(BiorbdModel):
 
         self.muscles = muscles
 
+    @cached_property
+    def q_mx(self) -> MX:
+        """
+        Get the symbolic generalized coordinates
+
+        Returns
+        -------
+        MX
+            The symbolic generalized coordinates
+        """
+
+        return MX.sym("q", self.nb_q, 1)
+
+    @cached_property
+    def qdot_mx(self) -> MX:
+        """
+        Get the symbolic generalized velocities
+
+        Returns
+        -------
+        MX
+            The symbolic generalized velocities
+        """
+        return MX.sym("qdot", self.nb_qdot, 1)
+
+    @cached_property
+    def activations_mx(self) -> MX:
+        """
+        Get the symbolic muscle activations
+
+        Returns
+        -------
+        MX
+            The symbolic muscle activations
+        """
+        return MX.sym("activations", self.nb_muscles, 1)
+
     @property
     def nb_muscles(self) -> int:
         """
@@ -37,7 +75,7 @@ class MuscleBiorbdModel(BiorbdModel):
         return len(self.muscles)
 
     @property
-    def _muscle_fiber_length_mx_variables(self) -> MX:
+    def muscle_fiber_length_mx_variables(self) -> MX:
         variables = []
         for muscle in self.muscles:
             if isinstance(muscle.compute_muscle_fiber_length, ComputeMuscleFiberLengthAsVariable):
@@ -45,38 +83,28 @@ class MuscleBiorbdModel(BiorbdModel):
         return vertcat(*variables)
 
     @property
-    def _muscle_fiber_velocity_mx_variables(self) -> MX:
+    def muscle_fiber_velocity_mx_variables(self) -> MX:
         variables = []
         for muscle in self.muscles:
             if isinstance(muscle.compute_muscle_fiber_velocity, ComputeMuscleFiberVelocityFlexibleTendon):
                 variables.append(muscle.compute_muscle_fiber_velocity.mx_variable)
         return vertcat(*variables)
 
-    def tendon_force(self, tendon_length: MX) -> MX:
+    def muscle_tendon_lengths(self, q) -> MX:
         """
-        Compute the tendon force
+        Compute the muscle-tendon lengths
 
         Parameters
         ----------
-        tendon_length: MX
-            The tendon length
+        q: MX
+            The generalized coordinates vector of size (n_dof x 1)
 
         Returns
         -------
         MX
-            The tendon force corresponding to the given tendon length
+            The muscle-tendon lengths vector of size (n_muscles x 1)
         """
-        raise NotImplementedError("TODO")
 
-    @override
-    def muscle_length_jacobian(self, q) -> MX:
-        raise RuntimeError(
-            "In the context of this project, the name 'muscle_length_jacobian' is confusing as it is the "
-            "jacobian of the muscle-tendon-unit length (as opposed to the muscle-fiber-unit length)."
-        )
-
-    def muscle_tendon_lengths(self, q) -> MX:
-        # TODO ADD TEST THIS METHOD
         updated_model = self.model.UpdateKinematicsCustom(q)
         out = []
         for index in range(self.nb_muscles):
@@ -88,8 +116,14 @@ class MuscleBiorbdModel(BiorbdModel):
     def muscle_tendon_length_jacobian(self, q) -> MX:
         return super(MuscleBiorbdModel, self).muscle_length_jacobian(q)[self._muscle_index_to_biorbd_model, :]
 
+    @override
+    def muscle_length_jacobian(self, q) -> MX:
+        raise RuntimeError(
+            "In the context of this project, the name 'muscle_length_jacobian' is confusing as it is the "
+            "jacobian of the muscle-tendon-unit length (as opposed to the muscle-fiber-unit length)."
+        )
+
     def tendon_lengths(self, activations: MX, q: MX, qdot: MX) -> MX:
-        # TODO ADD TEST THIS METHOD
         muscle_tendon_lengths = self.muscle_tendon_lengths(q)
 
         out = []
@@ -111,6 +145,33 @@ class MuscleBiorbdModel(BiorbdModel):
                 )
             )
         return vertcat(*out)
+
+    def tendon_forces(self, activations: MX, q: MX, qdot: MX) -> MX:
+        """
+        Compute the tendon force for each muscles
+
+        Parameters
+        ----------
+        activations: MX
+            The muscle activations vector of size (n_muscles x 1)
+        q: MX
+            The generalized coordinates vector of size (n_dof x 1)
+        qdot: MX
+            The generalized velocities vector of size (n_dof x 1)
+
+        Returns
+        -------
+        MX
+            The tendon forces vector of size (n_muscles x 1)
+        """
+
+        tendon_lengths = self.tendon_lengths(activations, q, qdot)
+
+        forces = MX.zeros(self.nb_muscles, 1)
+        for i, muscle in enumerate(self.muscles):
+            forces[i] = muscle.compute_tendon_force(tendon_length=tendon_lengths[i])
+
+        return forces
 
     def muscle_fiber_lengths(self, activations: MX, q: MX, qdot: MX) -> MX:
         """
@@ -209,8 +270,6 @@ class MuscleBiorbdModel(BiorbdModel):
         """
 
         updated_model = self.model.UpdateKinematicsCustom(q, qdot)
-        muscle_fiber_lengths = self.muscle_fiber_lengths(activations, q, qdot)
-        tendon_lengths = self.tendon_lengths(activations, q, qdot)
 
         velocities = MX.zeros(self.nb_muscles, 1)
         for index, muscle in enumerate(self.muscles):
@@ -221,8 +280,6 @@ class MuscleBiorbdModel(BiorbdModel):
                 activation=activations[index],
                 q=q,
                 qdot=qdot,
-                muscle_fiber_length=muscle_fiber_lengths[index],
-                tendon_length=tendon_lengths[index],
             )
         return velocities
 
@@ -299,7 +356,9 @@ class MuscleBiorbdModel(BiorbdModel):
 
     def to_casadi_function(self, mx_function: Callable[[Any], MX], *keys: Iterable[str]) -> Function:
         """
-        Convert a CasADi MX to a CasADi Function with specific parameters. To evaluate the function, use evaluate_function.
+        Convert a CasADi MX to a CasADi Function with specific parameters. To evaluate the function you can call it
+        with the following parameters: ["q", "qdot", "activations", "muscle_fiber_lengths", "muscle_fiber_velocities"]
+        and get the ["output"] value.
 
         Parameters
         ----------
@@ -317,73 +376,27 @@ class MuscleBiorbdModel(BiorbdModel):
             The result of the evaluation
         """
 
-        q_mx = MX.sym("q", self.nb_q, 1)
-        qdot_mx = MX.sym("qdot", self.nb_qdot, 1)
-        activations_mx = MX.sym("activations", self.nb_muscles, 1)
-
         keys_to_mx = {}
         for key in keys:
             if key == "q":
-                keys_to_mx[key] = q_mx
+                keys_to_mx[key] = self.q_mx
             elif key == "qdot":
-                keys_to_mx[key] = qdot_mx
+                keys_to_mx[key] = self.qdot_mx
             elif key == "activations":
-                keys_to_mx[key] = activations_mx
+                keys_to_mx[key] = self.activations_mx
             else:
-                raise ValueError(f"Key {key} is not recognized")
+                raise ValueError(f"Expected 'q', 'qdot' or 'activations', got {key}")
 
-        muscle_lengths_mx = self._muscle_fiber_length_mx_variables
-        muscle_velocities_mx = self._muscle_fiber_velocity_mx_variables
+        muscle_lengths_mx = self.muscle_fiber_length_mx_variables
+        muscle_velocities_mx = self.muscle_fiber_velocity_mx_variables
 
         return Function(
             "f",
-            [q_mx, qdot_mx, activations_mx, muscle_lengths_mx, muscle_velocities_mx],
+            [self.q_mx, self.qdot_mx, self.activations_mx, muscle_lengths_mx, muscle_velocities_mx],
             [mx_function(**keys_to_mx)],
-            ["q", "qdot", "activations", "muscle_lengths_mx", "muscle_velocities_mx"],
+            ["q", "qdot", "activations", "muscle_fiber_lengths", "muscle_fiber_velocities"],
             ["output"],
         )
-
-    def evaluate_function(self, function_to_evaluate: Function, **kwargs) -> DM:
-        """
-        Evaluate a CasADi Function with specific parameters. The function must be created with to_function.
-
-        Parameters
-        ----------
-        function_to_evaluate: Function
-            The CasADi Function to evaluate.
-        **kwargs
-            The values of the variables at which to evaluate the function, limited to q, qdot, activations, muscle_lengths,
-            muscle_velocities. The default values are 0.
-
-        Returns
-        -------
-        DM
-            The result of the evaluation
-        """
-
-        def get_value_from_kwargs(key, default):
-            if key in kwargs:
-                element = kwargs[key]
-                del kwargs[key]
-                return element
-            return default
-
-        q = get_value_from_kwargs("q", [0] * self.nb_q)
-        qdot = get_value_from_kwargs("qdot", [0] * self.nb_qdot)
-        activations = get_value_from_kwargs("activations", [0] * self.nb_muscles)
-        muscle_lengths_mx = get_value_from_kwargs("muscle_lengths", [0] * self.nb_muscles)
-        muscle_velocities_mx = get_value_from_kwargs("muscle_velocities", [0] * self.nb_muscles)
-
-        if kwargs:
-            raise ValueError(f"Unexpected arguments: {kwargs.keys()}")
-
-        return function_to_evaluate(
-            q=q,
-            qdot=qdot,
-            activations=activations,
-            muscle_lengths_mx=muscle_lengths_mx,
-            muscle_velocities_mx=muscle_velocities_mx,
-        )["output"]
 
     def function_to_dm(self, mx_to_evaluate: Callable, **kwargs) -> DM:
         """
@@ -403,4 +416,4 @@ class MuscleBiorbdModel(BiorbdModel):
             The result of the evaluation
         """
         func = self.to_casadi_function(mx_to_evaluate, *kwargs.keys())
-        return self.evaluate_function(func, **kwargs)
+        return func(**kwargs)["output"]

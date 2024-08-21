@@ -1,3 +1,5 @@
+from functools import cached_property
+
 import biorbd_casadi as biorbd
 from casadi import MX, Function, rootfinder
 
@@ -33,7 +35,11 @@ class ComputeMuscleFiberLengthAsVariable:
     """
 
     def __init__(self, mx_symbolic: MX = None) -> None:
-        self.mx_variable = MX.sym("muscle_fiber_length", 1, 1) if mx_symbolic is None else mx_symbolic
+        self._mx_variable = MX.sym("muscle_fiber_length", 1, 1) if mx_symbolic is None else mx_symbolic
+
+    @cached_property
+    def mx_variable(self) -> MX:
+        return self._mx_variable
 
     def __call__(
         self,
@@ -71,6 +77,7 @@ class ComputeMuscleFiberLengthInstantaneousEquilibrium(ComputeMuscleFiberLengthA
             raise ValueError("The muscle model must be a flexible tendon to compute the instantaneous equilibrium")
 
         # Alias for the MX variables
+        activation_mx = MX.sym("activation", 1, 1)
         muscle_fiber_length_mx = self.mx_variable
 
         # Compute the tendon length
@@ -82,9 +89,7 @@ class ComputeMuscleFiberLengthInstantaneousEquilibrium(ComputeMuscleFiberLengthA
         # Compute the muscle and tendon forces
         force_tendon = muscle.compute_tendon_force(tendon_length=tendon_length)
         force_muscle = muscle.compute_muscle_force(
-            activation=activation,
-            muscle_fiber_length=muscle_fiber_length_mx,
-            muscle_fiber_velocity=0,
+            activation=activation_mx, muscle_fiber_length=muscle_fiber_length_mx, muscle_fiber_velocity=0
         )
 
         # The muscle_fiber_length is found when it equates the muscle and tendon forces
@@ -92,7 +97,7 @@ class ComputeMuscleFiberLengthInstantaneousEquilibrium(ComputeMuscleFiberLengthA
             "g",
             [
                 muscle_fiber_length_mx,
-                activation if isinstance(activation, MX) else MX.sym("dummy_activation"),
+                activation_mx,
                 q if isinstance(q, MX) else MX.sym("dummy_q"),
             ],
             [force_muscle - force_tendon],
@@ -104,7 +109,7 @@ class ComputeMuscleFiberLengthInstantaneousEquilibrium(ComputeMuscleFiberLengthA
             "newton_method",
             "newton",
             equality_constraint,
-            {"error_on_fail": False, "enable_fd": False, "print_in": False, "print_out": False, "max_num_dir": 10},
+            {"error_on_fail": True, "enable_fd": False, "print_in": False, "print_out": False, "max_num_dir": 10},
         )
         # Evaluate the muscle fiber length
-        return newton_method(i1=activation, i2=q)["o0"]
+        return newton_method(i0=self.mx_variable, i1=activation, i2=q)["o0"]

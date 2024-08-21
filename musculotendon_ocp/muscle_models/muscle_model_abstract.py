@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from functools import cached_property
 from typing import Any, Callable, Iterable
 
 import biorbd_casadi as biorbd
@@ -101,6 +102,34 @@ class MuscleModelAbstract(ABC):
         """
         return self._name
 
+    @cached_property
+    def activation_mx(self) -> MX:
+        """
+        Get the muscle activation MX
+        """
+        return MX.sym("activation", 1, 1)
+
+    @cached_property
+    def muscle_fiber_length_mx(self) -> MX:
+        """
+        Get the muscle fiber length MX
+        """
+        return MX.sym("muscle_fiber_length", 1, 1)
+
+    @cached_property
+    def muscle_fiber_velocity_mx(self) -> MX:
+        """
+        Get the muscle fiber velocity MX
+        """
+        return MX.sym("muscle_fiber_velocity", 1, 1)
+
+    @cached_property
+    def tendon_length_mx(self) -> MX:
+        """
+        Get the tendon length MX
+        """
+        return MX.sym("tendon_length", 1, 1)
+
     @abstractmethod
     def normalize_muscle_fiber_length(self, muscle_fiber_length: MX) -> MX:
         """
@@ -169,6 +198,7 @@ class MuscleModelAbstract(ABC):
             The muscle force corresponding to the given muscle activation, length and velocity
         """
 
+    @abstractmethod
     def compute_tendon_length(self, muscle_tendon_length: MX, muscle_fiber_length: MX) -> MX:
         """
         Compute the tendon length
@@ -185,7 +215,6 @@ class MuscleModelAbstract(ABC):
         MX
             The tendon length corresponding to the given muscle-tendon length and muscle fiber length
         """
-        return muscle_tendon_length - muscle_fiber_length
 
     @abstractmethod
     def compute_tendon_force(self, tendon_length: MX) -> MX:
@@ -205,7 +234,8 @@ class MuscleModelAbstract(ABC):
 
     def to_casadi_function(self, mx_function: Callable[[Any], MX], *keys: Iterable[str]) -> Function:
         """
-        Convert a CasADi MX to a CasADi Function with specific parameters. To evaluate the function, use evaluate_function.
+        Convert a CasADi MX to a CasADi Function with specific parameters. To evaluate the function you can call it
+        and get the ["output"] value.
 
         Parameters
         ----------
@@ -223,21 +253,16 @@ class MuscleModelAbstract(ABC):
             The result of the evaluation
         """
 
-        activation_mx = MX.sym("activation", 1, 1)
-        muscle_fiber_length_mx = MX.sym("muscle_fiber_length", 1, 1)
-        muscle_fiber_velocity_mx = MX.sym("muscle_fiber_velocity", 1, 1)
-        tendon_length_mx = MX.sym("tendon_length", 1, 1)
-
         keys_to_mx = {}
         for key in keys:
             if key == "activation":
-                keys_to_mx["activation"] = activation_mx
+                keys_to_mx["activation"] = self.activation_mx
             elif key == "muscle_fiber_length":
-                keys_to_mx["muscle_fiber_length"] = muscle_fiber_length_mx
+                keys_to_mx["muscle_fiber_length"] = self.muscle_fiber_length_mx
             elif key == "muscle_fiber_velocity":
-                keys_to_mx["muscle_fiber_velocity"] = muscle_fiber_velocity_mx
+                keys_to_mx["muscle_fiber_velocity"] = self.muscle_fiber_velocity_mx
             elif key == "tendon_length":
-                keys_to_mx["tendon_length"] = tendon_length_mx
+                keys_to_mx["tendon_length"] = self.tendon_length_mx
             else:
                 raise ValueError(
                     f"Expected 'activation', 'muscle_fiber_length', 'muscle_fiber_velocity' or 'tendon_length', got {key}"
@@ -245,52 +270,11 @@ class MuscleModelAbstract(ABC):
 
         return Function(
             "f",
-            [activation_mx, muscle_fiber_length_mx, muscle_fiber_velocity_mx, tendon_length_mx],
+            [self.activation_mx, self.muscle_fiber_length_mx, self.muscle_fiber_velocity_mx, self.tendon_length_mx],
             [mx_function(**keys_to_mx)],
-            ["activation", "muscle_fiber_length", "muscle_fiber_velocity", "tensor_length"],
+            ["activation", "muscle_fiber_length", "muscle_fiber_velocity", "tendon_length"],
             ["output"],
         )
-
-    def evaluate_function(self, function_to_evaluate: Function, **kwargs) -> DM:
-        """
-        Evaluate a CasADi Function with specific parameters. The function must be created with to_function.
-
-        Parameters
-        ----------
-        function_to_evaluate: Function
-            The CasADi Function to evaluate.
-        **kwargs
-            The values of the variables at which to evaluate the function, limited to 'activation', 'muscle_fiber_length',
-            'muscle_fiber_velocity' or 'tendon_length'.
-            The default values are 0.
-
-        Returns
-        -------
-        DM
-            The result of the evaluation
-        """
-
-        def get_value_from_kwargs(key, default):
-            if key in kwargs:
-                element = kwargs[key]
-                del kwargs[key]
-                return element
-            return default
-
-        activation = get_value_from_kwargs("activation", 0)
-        muscle_fiber_length = get_value_from_kwargs("muscle_fiber_length", 0)
-        muscle_fiber_velocity = get_value_from_kwargs("muscle_fiber_velocity", 0)
-        tendon_length = get_value_from_kwargs("tendon_length", 0)
-
-        if kwargs:
-            raise ValueError(f"Unknown arguments: {kwargs.keys()}")
-
-        return function_to_evaluate(
-            activation=activation,
-            muscle_fiber_length=muscle_fiber_length,
-            muscle_fiber_velocity=muscle_fiber_velocity,
-            tensor_length=tendon_length,
-        )["output"]
 
     def function_to_dm(self, mx_to_evaluate: Callable, **kwargs) -> DM:
         """
@@ -310,4 +294,4 @@ class MuscleModelAbstract(ABC):
             The result of the evaluation
         """
         func = self.to_casadi_function(mx_to_evaluate, *kwargs.keys())
-        return self.evaluate_function(func, **kwargs)
+        return func(**kwargs)["output"]

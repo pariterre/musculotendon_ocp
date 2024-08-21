@@ -31,7 +31,7 @@ class ForceActiveHillType:
         self.b33 = b33
         self.b43 = b43
 
-    def __call__(self, normalized_muscle_length: MX) -> MX:
+    def __call__(self, normalized_muscle_fiber_length: MX) -> MX:
         """
         Compute the normalized force from the passive force-length relationship
 
@@ -46,7 +46,7 @@ class ForceActiveHillType:
             The normalized passive force corresponding to the given muscle length
         """
 
-        length = normalized_muscle_length  # alias so the next line is not too long
+        length = normalized_muscle_fiber_length  # alias so the next line is not too long
         return (
             self.b11 * exp((-0.5) * ((length - self.b21) ** 2) / ((self.b31 + self.b41 * length) ** 2))
             + self.b12 * exp((-0.5) * (length - self.b22) ** 2 / ((self.b32 + self.b42 * length) ** 2))

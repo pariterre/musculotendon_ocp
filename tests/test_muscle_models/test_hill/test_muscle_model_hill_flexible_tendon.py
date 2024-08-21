@@ -57,7 +57,11 @@ def test_muscle_model_hill_flexible_tendon():
     assert id(model._force_velocity) == id(force_velocity)
 
     model_default = MuscleModelHillFlexibleTendon(
-        name=name, maximal_force=maximal_force, optimal_length=optimal_length, tendon_slack_length=tendon_slack_length
+        name=name,
+        maximal_force=maximal_force,
+        optimal_length=optimal_length,
+        tendon_slack_length=tendon_slack_length,
+        maximal_velocity=5.0,
     )
     assert model_default.maximal_velocity == 5.0
     assert model_default.c1 == 0.2
@@ -72,15 +76,23 @@ def test_muscle_model_hill_flexible_tendon():
 
 def test_muscle_model_hill_flexible_tendon_normalize_tendon_length():
     model = MuscleModelHillFlexibleTendon(
-        name="Dummy", maximal_force=123, optimal_length=0.123, tendon_slack_length=0.123
+        name="Dummy", maximal_force=123, optimal_length=0.123, tendon_slack_length=0.123, maximal_velocity=5.0
     )
 
     assert_almost_equal(model.normalize_tendon_length(tendon_length=0.246), 2.0)
 
 
+def test_muscle_model_hill_flexible_tendon_compute_tendon_length():
+    model = MuscleModelHillFlexibleTendon(
+        name="Dummy", maximal_force=123, optimal_length=0.123, tendon_slack_length=0.123, maximal_velocity=5.0
+    )
+
+    assert_almost_equal(model.compute_tendon_length(muscle_tendon_length=0.246, muscle_fiber_length=0.123), 0.123)
+
+
 def test_muscle_model_hill_flexible_tendon_compute_tendon_force():
     model = MuscleModelHillFlexibleTendon(
-        name="Dummy", maximal_force=123, optimal_length=0.123, tendon_slack_length=0.123
+        name="Dummy", maximal_force=123, optimal_length=0.123, tendon_slack_length=0.123, maximal_velocity=5.0
     )
 
     # Test exact values

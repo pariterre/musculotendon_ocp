@@ -1,6 +1,6 @@
 from typing import override
 
-from casadi import MX, exp, Function, rootfinder
+from casadi import MX, exp
 
 from .muscle_model_hill_rigid_tendon import MuscleModelHillRigidTendon
 from ..muscle_model_abstract import ComputeMuscleFiberLengthCallable, ComputeMuscleFiberVelocityCallable
@@ -17,12 +17,13 @@ from ..compute_muscle_fiber_velocity import (
 class MuscleModelHillFlexibleTendon(MuscleModelHillRigidTendon):
     def __init__(
         self,
+        name: str,
         c1: float = 0.2,
         c2: float = 0.995,
         c3: float = 0.250,
         kt: float = 35.0,
-        compute_muscle_fiber_length: ComputeMuscleFiberLengthCallable = ComputeMuscleFiberLengthInstantaneousEquilibrium(),
-        compute_muscle_fiber_velocity: ComputeMuscleFiberVelocityCallable = ComputeMuscleFiberVelocityFlexibleTendon(),
+        compute_muscle_fiber_length: ComputeMuscleFiberLengthCallable | None = None,
+        compute_muscle_fiber_velocity: ComputeMuscleFiberVelocityCallable | None = None,
         **kwargs,
     ):
         """
@@ -31,13 +32,18 @@ class MuscleModelHillFlexibleTendon(MuscleModelHillRigidTendon):
         tendon_slack_length: MX
             The tendon slack length
         """
+        if compute_muscle_fiber_length is None:
+            compute_muscle_fiber_length = ComputeMuscleFiberLengthInstantaneousEquilibrium()
         if isinstance(compute_muscle_fiber_length, ComputeMuscleFiberLengthRigidTendon):
             raise ValueError("The compute_muscle_fiber_length must be a flexible tendon")
 
+        if compute_muscle_fiber_velocity is None:
+            compute_muscle_fiber_velocity = ComputeMuscleFiberVelocityFlexibleTendon()
         if isinstance(compute_muscle_fiber_velocity, ComputeMuscleFiberVelocityRigidTendon):
             raise ValueError("The compute_muscle_fiber_velocity must be a flexible tendon")
 
         super().__init__(
+            name=name,
             compute_muscle_fiber_length=compute_muscle_fiber_length,
             compute_muscle_fiber_velocity=compute_muscle_fiber_velocity,
             **kwargs,
@@ -53,8 +59,14 @@ class MuscleModelHillFlexibleTendon(MuscleModelHillRigidTendon):
         return tendon_length / self.tendon_slack_length
 
     @override
+    def compute_tendon_length(self, muscle_tendon_length: MX, muscle_fiber_length: MX) -> MX:
+        return muscle_tendon_length - muscle_fiber_length
+
+    @override
     def compute_tendon_force(self, tendon_length: MX) -> MX:
         normalized_tendon_length = self.normalize_tendon_length(tendon_length)
-        offset = 0.01175075667752834
 
-        return self.c1 * exp(self.kt * (normalized_tendon_length - self.c2)) - self.c3 + offset
+        # TODO @ipuch Keep this offset in the model? ADD THE CAPABILITY
+        normalized_tendon_slack_length = 1.0
+        zero_offset = self.c1 * exp(self.kt * (normalized_tendon_slack_length - self.c2)) - self.c3
+        return self.c1 * exp(self.kt * (normalized_tendon_length - self.c2)) - self.c3 - zero_offset

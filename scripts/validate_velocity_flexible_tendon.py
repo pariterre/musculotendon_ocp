@@ -22,9 +22,9 @@ def compute_muscle_lengths(model: MuscleBiorbdModel, all_muscle_fiber_lengths: n
     return out
 
 
-def muscle_fiber_velocity_from_finitediff(lengths: np.ndarray, t: np.ndarray) -> np.ndarray:
+def compute_finitediff(array: np.ndarray, t: np.ndarray) -> np.ndarray:
     finitediff = np.zeros(len(t))
-    finitediff[1:-1] = (lengths[2:] - lengths[:-2]) / (t[2] - t[0])
+    finitediff[1:-1] = (array[2:] - array[:-2]) / (t[2] - t[0])
     return finitediff
 
 
@@ -40,16 +40,20 @@ def compute_muscle_fiber_velocities(
     muscle_fiber_velocities_func = model.to_casadi_function(model.muscle_fiber_velocities, "activations", "q", "qdot")
 
     for i, (lengths, q, qdot) in enumerate(zip(all_muscle_lengths.T, all_q.T, all_qdot.T)):
-        vel_all_muscles = model.evaluate_function(
-            muscle_fiber_velocities_func, activations=activations, q=q, qdot=qdot, muscle_lengths=lengths
-        ).__array__()
+        vel_all_muscles = muscle_fiber_velocities_func(
+            activations=activations,
+            q=q,
+            qdot=qdot,
+            muscle_lengths=lengths,
+        )["output"].__array__()
         for m, vel_muscle in enumerate(vel_all_muscles):
             velocities[m][i] = vel_muscle
 
     return velocities
 
 
-tata = [np.array([0])]
+# TODO ipuch should we use this
+last_computed_velocity = [np.array([0])]
 
 
 def dynamics(_, x, dynamics_functions: list[Callable], model: MuscleBiorbdModel, activations: np.ndarray) -> np.ndarray:
@@ -60,37 +64,35 @@ def dynamics(_, x, dynamics_functions: list[Callable], model: MuscleBiorbdModel,
     q = x[model.nb_muscles : model.nb_muscles + model.nb_q]
     qdot = x[model.nb_muscles + model.nb_q :]
 
-    fiber_lengths_dot = model.evaluate_function(
-        muscle_fiber_velocity_func,
+    fiber_lengths_dot = muscle_fiber_velocity_func(
         activations=activations,
         q=q,
         qdot=qdot,
-        muscle_lengths=fiber_lengths,
-        # muscle_velocities=tata[-1],
-    ).__array__()[:, 0]
-    tata.append(fiber_lengths_dot)
+        muscle_fiber_lengths=fiber_lengths,
+        # muscle_fiber_velocities=last_computed_velocity[-1],
+    )["output"].__array__()[:, 0]
+    last_computed_velocity.append(fiber_lengths_dot)
 
-    qddot = model.evaluate_function(
-        forward_dynamics_func,
+    qddot = forward_dynamics_func(
         activations=activations,
         q=q,
         qdot=qdot,
-        muscle_lengths=fiber_lengths,
-        muscle_velocities=fiber_lengths_dot,
-    ).__array__()[:, 0]
+        muscle_fiber_lengths=fiber_lengths,
+        muscle_fiber_velocities=fiber_lengths_dot,
+    )["output"].__array__()[:, 0]
 
     return np.concatenate((fiber_lengths_dot, qdot, qddot))
+
+
+def prepare_muscle_fiber_velocities(model: MuscleBiorbdModel, activations: MX, q: MX, qdot: MX) -> MX:
+    muscle_fiber_velocities = model.muscle_fiber_velocities(activations=activations, q=q, qdot=qdot)
+    return muscle_fiber_velocities
 
 
 def prepare_forward_dynamics(model: MuscleBiorbdModel, activations: MX, q: MX, qdot: MX) -> MX:
     tau = model.muscle_joint_torque(activations, q, qdot)
     qddot = model.forward_dynamics(q, qdot, tau)
     return qddot
-
-
-def prepare_muscle_fiber_velocities(model: MuscleBiorbdModel, activations: MX, q: MX, qdot: MX) -> MX:
-    muscle_fiber_velocities = model.muscle_fiber_velocities(activations=activations, q=q, qdot=qdot)
-    return muscle_fiber_velocities
 
 
 def main():
@@ -102,7 +104,8 @@ def main():
                 maximal_force=1000,
                 optimal_length=0.1,
                 tendon_slack_length=0.16,
-                force_damping=ForceDampingLinear(factor=1),
+                force_damping=ForceDampingLinear(factor=0.1),
+                maximal_velocity=5.0,
                 compute_muscle_fiber_length=ComputeMuscleFiberLengthAsVariable(),
                 compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityFlexibleTendon(),
             ),
@@ -110,10 +113,10 @@ def main():
     )
 
     t_span = (0, 1.5)
-    t = np.linspace(*t_span, 1000)
+    t = np.linspace(*t_span, 10000)
     q = np.ones(model.nb_q) * -0.24
     qdot = np.zeros(model.nb_qdot)
-    activations = np.ones(model.nb_muscles) * 0.0
+    activations = np.ones(model.nb_muscles) * 0.1
     initial_muscle_fiber_length = np.array(
         model.function_to_dm(model.muscle_fiber_lengths_equilibrated, activations=activations, q=q, qdot=qdot)
     )[:, 0]
@@ -142,7 +145,7 @@ def main():
 
     # Compute muscle velocities from finite difference as benchmark
     muscle_lengths = compute_muscle_lengths(model, muscle_fiber_lengths_int)
-    muscle_fiber_velocities_finitediff = [muscle_fiber_velocity_from_finitediff(length, t) for length in muscle_lengths]
+    muscle_fiber_velocities_finitediff = [compute_finitediff(length, t) for length in muscle_lengths]
 
     # Compute muscle velocities from jacobian
     muscle_fiber_velocities_computed = compute_muscle_fiber_velocities(
@@ -155,6 +158,19 @@ def main():
         plt.plot(t, q)
     plt.xlabel("Time (s)")
     plt.ylabel("Generalized coordinate (rad)")
+
+    plt.figure("Generalized velocities")
+    for qdot in qdot_int:
+        plt.plot(t, qdot)
+    plt.xlabel("Time (s)")
+    plt.ylabel("Generalized velocity (rad/s)")
+
+    plt.figure("Generalized accelerations")
+    qddot_finitediff = [compute_finitediff(qdot, t) for qdot in qdot_int]
+    for qddot in qddot_finitediff:
+        plt.plot(t, qddot)
+    plt.xlabel("Time (s)")
+    plt.ylabel("Generalized acceleration (rad/s^2)")
 
     plt.figure("Muscle lengths")
     for length in muscle_lengths:

@@ -6,7 +6,7 @@ class ForcePassiveHillType:
         self.kpe = kpe
         self.e0 = e0
 
-    def __call__(self, normalized_muscle_length: MX) -> MX:
+    def __call__(self, normalized_muscle_fiber_length: MX) -> MX:
         """
         Compute the normalized force from the passive force-length relationship
 
@@ -20,7 +20,7 @@ class ForcePassiveHillType:
         MX
             The normalized passive force corresponding to the given muscle length
         """
-        return (exp(self.kpe * (normalized_muscle_length - 1) / self.e0) - 1) / (exp(self.kpe) - 1)
+        return (exp(self.kpe * (normalized_muscle_fiber_length - 1) / self.e0) - 1) / (exp(self.kpe) - 1)
 
 
 class ForcePassiveAlwaysPositiveHillType(ForcePassiveHillType):
@@ -31,8 +31,8 @@ class ForcePassiveAlwaysPositiveHillType(ForcePassiveHillType):
         """
         return super(ForcePassiveAlwaysPositiveHillType, self).__call__(0.0)
 
-    def __call__(self, normalized_muscle_length: MX) -> MX:
+    def __call__(self, normalized_muscle_fiber_length: MX) -> MX:
         """
         Same as ForcePassiveHillType but an offset is added to ensure the force is always positive
         """
-        return super(ForcePassiveAlwaysPositiveHillType, self).__call__(normalized_muscle_length) - self.offset
+        return super(ForcePassiveAlwaysPositiveHillType, self).__call__(normalized_muscle_fiber_length) - self.offset

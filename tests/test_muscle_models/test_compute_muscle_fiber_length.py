@@ -5,10 +5,13 @@ from casadi import MX
 from musculotendon_ocp import (
     MuscleBiorbdModel,
     MuscleModelHillRigidTendon,
+    MuscleModelHillFlexibleTendon,
     ComputeMuscleFiberLengthRigidTendon,
     ComputeMuscleFiberLengthAsVariable,
+    ComputeMuscleFiberLengthInstantaneousEquilibrium,
 )
 import numpy as np
+import pytest
 
 model_path = (
     (os.getcwd() + "/musculotendon_ocp/rigidbody_models/models/one_muscle_holding_a_cube.bioMod")
@@ -18,31 +21,34 @@ model_path = (
 
 
 def test_compute_muscle_fiber_length_rigid_tendon():
-    mus = MuscleModelHillRigidTendon(name="Mus1", maximal_force=500, optimal_length=0.1, tendon_slack_length=0.123)
+    mus = MuscleModelHillRigidTendon(
+        name="Mus1", maximal_force=500, optimal_length=0.1, tendon_slack_length=0.123, maximal_velocity=5.0
+    )
     model = MuscleBiorbdModel(model_path, muscles=[mus])
     compute_muscle_fiber_length = ComputeMuscleFiberLengthRigidTendon()
 
     activation = np.array([0.5])
     q = np.ones(model.nb_q) * -0.2
     qdot = np.ones(model.nb_qdot)
-    np.testing.assert_almost_equal(
-        model.function_to_dm(
-            partial(
-                compute_muscle_fiber_length,
-                muscle=mus,
-                model_kinematic_updated=model.model.UpdateKinematicsCustom(q),
-                biorbd_muscle=model.model.muscle(0),
-                activation=activation,
-            ),
-            q=q,
-            qdot=qdot,
+
+    muscle_fiber_length = model.function_to_dm(
+        partial(
+            compute_muscle_fiber_length,
+            muscle=mus,
+            model_kinematic_updated=model.model.UpdateKinematicsCustom(q),
+            biorbd_muscle=model.model.muscle(0),
+            activation=activation,
         ),
-        0.077,
+        q=q,
+        qdot=qdot,
     )
+    np.testing.assert_almost_equal(muscle_fiber_length, 0.077)
 
 
 def test_compute_muscle_fiber_length_as_variable():
-    mus = MuscleModelHillRigidTendon(name="Mus1", maximal_force=500, optimal_length=0.1, tendon_slack_length=0.123)
+    mus = MuscleModelHillRigidTendon(
+        name="Mus1", maximal_force=500, optimal_length=0.1, tendon_slack_length=0.123, maximal_velocity=5.0
+    )
     model = MuscleBiorbdModel(model_path, muscles=[mus])
 
     mx_symbolic = MX.sym("muscle_fiber_length", 1, 1)
@@ -63,7 +69,7 @@ def test_compute_muscle_fiber_length_as_variable():
     )
 
     compute_muscle_fiber_length_default = ComputeMuscleFiberLengthAsVariable()
-    length = compute_muscle_fiber_length_default(
+    muscle_fiber_length = compute_muscle_fiber_length_default(
         muscle=mus,
         model_kinematic_updated=model.model.UpdateKinematicsCustom(q),
         biorbd_muscle=model.model.muscle(0),
@@ -71,5 +77,54 @@ def test_compute_muscle_fiber_length_as_variable():
         q=np.array([-0.2]),
         qdot=qdot,
     )
-    assert isinstance(length, MX)
-    assert length.name() == "muscle_fiber_length"
+    assert isinstance(muscle_fiber_length, MX)
+    assert muscle_fiber_length.name() == "muscle_fiber_length"
+
+
+def test_compute_muscle_fiber_length_instantaneous_equilibrium():
+    mus = MuscleModelHillFlexibleTendon(
+        name="Mus1", maximal_force=500, optimal_length=0.1, tendon_slack_length=0.123, maximal_velocity=5.0
+    )
+    model = MuscleBiorbdModel(model_path, muscles=[mus])
+
+    compute_muscle_fiber_length = ComputeMuscleFiberLengthInstantaneousEquilibrium()
+    activation = np.array([0.5])
+    q = np.ones(model.nb_q) * -0.2
+    qdot = np.ones(model.nb_qdot)
+
+    muscle_fiber_length = float(
+        compute_muscle_fiber_length(
+            muscle=mus,
+            model_kinematic_updated=model.model.UpdateKinematicsCustom(q),
+            biorbd_muscle=model.model.muscle(0),
+            activation=activation,
+            q=np.array([-0.2]),
+            qdot=qdot,
+        )
+    )
+
+    np.testing.assert_almost_equal(muscle_fiber_length, 0.05826843914426753)
+
+
+def test_compute_muscle_fiber_length_instantaneous_equilibrium_wrong_constructor():
+    mus = MuscleModelHillRigidTendon(
+        name="Mus1", maximal_force=500, optimal_length=0.1, tendon_slack_length=0.123, maximal_velocity=5.0
+    )
+    model = MuscleBiorbdModel(model_path, muscles=[mus])
+
+    compute_muscle_fiber_length = ComputeMuscleFiberLengthInstantaneousEquilibrium()
+    activation = np.array([0.5])
+    q = np.ones(model.nb_q) * -0.2
+    qdot = np.ones(model.nb_qdot)
+
+    with pytest.raises(
+        ValueError, match="The muscle model must be a flexible tendon to compute the instantaneous equilibrium"
+    ):
+        compute_muscle_fiber_length(
+            muscle=mus,
+            model_kinematic_updated=model.model.UpdateKinematicsCustom(q),
+            biorbd_muscle=model.model.muscle(0),
+            activation=activation,
+            q=np.array([-0.2]),
+            qdot=qdot,
+        )

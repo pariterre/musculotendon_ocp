@@ -1,3 +1,5 @@
+from functools import cached_property
+
 import biorbd_casadi as biorbd
 from casadi import MX, Function, rootfinder
 
@@ -20,8 +22,6 @@ class ComputeMuscleFiberVelocityRigidTendon:
         activation: MX,
         q: MX,
         qdot: MX,
-        muscle_fiber_length: MX,
-        tendon_length: MX,
     ) -> biorbd.MX:
         biorbd_muscle.updateOrientations(model_kinematic_updated, q, qdot)
 
@@ -37,8 +37,11 @@ class ComputeMuscleFiberVelocityFlexibleTendon:
     """
 
     def __init__(self, mx_symbolic: MX = None) -> None:
-        # TODO TEST THIS
-        self.mx_variable = MX.sym("muscle_fiber_velocity", 1, 1) if mx_symbolic is None else mx_symbolic
+        self._mx_variable = MX.sym("muscle_fiber_velocity", 1, 1) if mx_symbolic is None else mx_symbolic
+
+    @cached_property
+    def mx_variable(self) -> MX:
+        return self._mx_variable
 
     def __call__(
         self,
@@ -48,21 +51,53 @@ class ComputeMuscleFiberVelocityFlexibleTendon:
         activation: MX,
         q: MX,
         qdot: MX,
-        muscle_fiber_length: MX,
-        tendon_length: MX,
     ) -> biorbd.MX:
         if not isinstance(muscle.compute_muscle_fiber_length, ComputeMuscleFiberLengthAsVariable):
             raise ValueError("The compute_muscle_fiber_length must be a ComputeMuscleFiberLengthAsVariable")
 
+        # Alias for the MX variables
+        activation_mx = MX.sym("activation", 1, 1)
+        muscle_fiber_velocity_mx = self.mx_variable
+        muscle_fiber_length_mx = muscle.compute_muscle_fiber_length.mx_variable
+
+        # Compute necessary variables
+        muscle_fiber_length = muscle.compute_muscle_fiber_length(
+            muscle=muscle,
+            model_kinematic_updated=model_kinematic_updated,
+            biorbd_muscle=biorbd_muscle,
+            activation=activation_mx,
+            q=q,
+            qdot=qdot,
+        )
+        biorbd_muscle.updateOrientations(model_kinematic_updated, q)
+        tendon_length = biorbd_muscle.musculoTendonLength(model_kinematic_updated, q).to_mx()
+
+        # Compute the muscle and tendon forces
         force_tendon = muscle.compute_tendon_force(tendon_length=tendon_length)
         force_muscle = muscle.compute_muscle_force(
-            activation=activation, muscle_fiber_length=muscle_fiber_length, muscle_fiber_velocity=self.mx_variable
+            activation=activation_mx,
+            muscle_fiber_length=muscle_fiber_length,
+            muscle_fiber_velocity=muscle_fiber_velocity_mx,
         )
 
-        muscle_fiber_length_mx = muscle.compute_muscle_fiber_length.mx_variable
+        # The muscle_fiber_length is found when it equates the muscle and tendon forces
         equality_constraint = Function(
-            "g", [self.mx_variable, muscle_fiber_length_mx, activation, q], [force_muscle - force_tendon]
+            "g",
+            [
+                muscle_fiber_velocity_mx,
+                muscle_fiber_length_mx,
+                activation_mx,
+                q if isinstance(q, MX) else MX.sym("dummy_q"),
+            ],
+            [force_muscle - force_tendon],
         )
+
+        # TODO CHECK IF WE CAN USE THIS EXPLICIT FORMULA INSTEAD OF THE IMPLICIT ONE
+        # NOTE: IF NO DAMPING THIS CAN RETURN IMMEDIATELY, OTHERWISE WE NEED TO USE THE ROOTFINDER
+        # return muscle._vmax  * muscle._force_velocity_inverse(
+        #     (force_tendon / cos(muscle.pennation) - muscle._passive_force - muscle._force_damping)
+        #     / (activation * muscle._force_active)
+        # )
 
         # Reminder: the first variable of the function is the unknown value that rootfinder tries to optimize.
         # The others are parameters. To have more unknown values to calculate, one needs to use the vertcat function.
@@ -70,7 +105,10 @@ class ComputeMuscleFiberVelocityFlexibleTendon:
             "newton_method",
             "newton",
             equality_constraint,
-            {"error_on_fail": False, "enable_fd": False, "print_in": False, "print_out": False, "max_num_dir": 10},
+            {"error_on_fail": True, "enable_fd": False, "print_in": False, "print_out": False, "max_num_dir": 10},
         )
 
         return newton_method(i0=self.mx_variable, i1=muscle_fiber_length, i2=activation, i3=q)["o0"]
+
+
+# TODO Implement the linearized version of the flexible tendon

@@ -10,7 +10,7 @@ from scipy.integrate import solve_ivp
 
 def compute_muscle_lengths(model: MuscleBiorbdModel, all_q: np.ndarray) -> list[np.ndarray]:
     func = model.to_casadi_function(model.muscle_fiber_lengths, "q")
-    values = [model.evaluate_function(func, q=q) for q in all_q.T]
+    values = [func(q=q)["output"] for q in all_q.T]
 
     # Dispatch so the outer list is the muscles and the inner list is the time points (opposite of the current structure)
     out = [None] * model.nb_muscles
@@ -31,7 +31,7 @@ def compute_muscle_fiber_velocities(model: MuscleBiorbdModel, all_q: np.ndarray,
     muscle_tendon_length_jacobian_func = model.to_casadi_function(model.muscle_tendon_length_jacobian, "q")
 
     for i, (q, qdot) in enumerate(zip(all_q.T, all_qdot.T)):
-        jac = model.evaluate_function(muscle_tendon_length_jacobian_func, q=q)
+        jac = muscle_tendon_length_jacobian_func(q=q)["output"]
         vel_all_muscles = np.array(jac @ qdot)
         for m, vel_muscle in enumerate(vel_all_muscles):
             velocities[m][i] = vel_muscle
@@ -43,7 +43,7 @@ def dynamics(_, x, dynamics_func: Callable, model: MuscleBiorbdModel, activation
     q = x[: model.nb_q]
     qdot = x[model.nb_q :]
 
-    qddot = model.evaluate_function(dynamics_func, activations=activations, q=q, qdot=qdot).__array__()[:, 0]
+    qddot = dynamics_func(activations=activations, q=q, qdot=qdot)["output"].__array__()[:, 0]
 
     return np.concatenate((qdot, qddot))
 
@@ -57,7 +57,9 @@ def main():
     model = MuscleBiorbdModel(
         "musculotendon_ocp/rigidbody_models/models/one_muscle_holding_a_cube.bioMod",
         muscles=[
-            MuscleModelHillRigidTendon(name="Mus1", maximal_force=500, optimal_length=0.1, tendon_slack_length=0.16),
+            MuscleModelHillRigidTendon(
+                name="Mus1", maximal_force=500, optimal_length=0.1, tendon_slack_length=0.16, maximal_velocity=5.0
+            ),
         ],
     )
 

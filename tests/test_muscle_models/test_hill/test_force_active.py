@@ -20,9 +20,9 @@ def test_force_active_hill_type():
     assert force_active_model.b43 == 0.000
 
     # Test exact values
-    assert_almost_equal(force_active_model(normalized_muscle_length=0.5), 0.05419527682606315)
-    assert_almost_equal(force_active_model(normalized_muscle_length=1.0), 0.9994334614323869)
-    assert_almost_equal(force_active_model(normalized_muscle_length=1.5), 0.22611061742850164)
+    assert_almost_equal(force_active_model(normalized_muscle_fiber_length=0.5), 0.05419527682606315)
+    assert_almost_equal(force_active_model(normalized_muscle_fiber_length=1.0), 0.9994334614323869)
+    assert_almost_equal(force_active_model(normalized_muscle_fiber_length=1.5), 0.22611061742850164)
 
     # Test values based on qualitative behavior (inverted U-shaped function)
     assert force_active_model(0.5) < force_active_model(1.0)
