@@ -9,7 +9,7 @@ from scipy.integrate import solve_ivp
 
 
 def compute_muscle_lengths(model: MuscleBiorbdModel, all_q: np.ndarray) -> list[np.ndarray]:
-    func = model.to_casadi_function(model.muscle_fiber_lengths, "q")
+    func = model.to_casadi_function(model.muscle_fiber_lengths, "activations", "q", "qdot")
     values = [func(q=q)["output"] for q in all_q.T]
 
     # Dispatch so the outer list is the muscles and the inner list is the time points (opposite of the current structure)
@@ -49,7 +49,8 @@ def dynamics(_, x, dynamics_func: Callable, model: MuscleBiorbdModel, activation
 
 
 def qddot_from_muscles(model: MuscleBiorbdModel, activations: MX, q: MX, qdot: MX) -> MX:
-    tau = model.muscle_joint_torque(activations, q, qdot)
+    muscle_fiber_lengths = model.muscle_fiber_lengths(activations, q, qdot)
+    tau = model.muscle_joint_torque(activations, q, qdot, muscle_fiber_lengths)
     return model.forward_dynamics(q, qdot, tau)
 
 

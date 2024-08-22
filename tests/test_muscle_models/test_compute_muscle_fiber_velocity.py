@@ -39,7 +39,6 @@ def test_compute_muscle_fiber_velocity_rigid_tendon():
                 biorbd_muscle=model.model.muscle(0),
                 activation=activation,
                 muscle_fiber_length=None,
-                tendon_length=None,
             ),
             q=q,
             qdot=qdot,
@@ -62,18 +61,16 @@ def test_compute_muscle_fiber_velocity_flexible_tendon():
 
     muscle_fiber_velocity = float(
         compute_muscle_fiber_velocity(
-            muscle=mus,
-            model_kinematic_updated=model.model.UpdateKinematicsCustom(q),
-            biorbd_muscle=model.model.muscle(0),
             activation=activation,
             q=np.array([-0.2]),
             qdot=qdot,
+            muscle=mus,
+            model_kinematic_updated=model.model.UpdateKinematicsCustom(q),
+            biorbd_muscle=model.model.muscle(0),
             muscle_fiber_length=np.array([0.1]),
-            tendon_length=np.array([0.125]),
         )
     )
-
-    np.testing.assert_almost_equal(muscle_fiber_velocity, -5.174756252073765)
+    np.testing.assert_almost_equal(muscle_fiber_velocity, -5.201202604749881)
 
 
 def test_compute_muscle_fiber_velocity_flexible_tendon_wrong_constructor():
@@ -88,16 +85,16 @@ def test_compute_muscle_fiber_velocity_flexible_tendon_wrong_constructor():
     activation = np.array([0.5])
     q = np.ones(model.nb_q) * -0.2
     qdot = np.ones(model.nb_qdot)
+
     with pytest.raises(
-        ValueError, match="The compute_muscle_fiber_length must be a ComputeMuscleFiberLengthAsVariable"
+        ValueError, match="The compute_muscle_fiber_length must not be a ComputeMuscleFiberLengthRigidTendon"
     ):
         compute_muscle_fiber_velocity(
-            muscle=mus,
-            model_kinematic_updated=model.model.UpdateKinematicsCustom(q),
-            biorbd_muscle=model.model.muscle(0),
             activation=activation,
             q=np.array([-0.2]),
             qdot=qdot,
-            muscle_fiber_length=None,
-            tendon_length=None,
+            muscle=mus,
+            model_kinematic_updated=model.model.UpdateKinematicsCustom(q),
+            biorbd_muscle=model.model.muscle(0),
+            muscle_fiber_length=np.array([0.1]),
         )

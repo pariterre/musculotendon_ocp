@@ -8,9 +8,10 @@ from casadi import MX, DM, Function, vertcat
 from ..muscle_models.muscle_model_abstract import MuscleModelAbstract
 from ..muscle_models.compute_muscle_fiber_length import (
     ComputeMuscleFiberLengthAsVariable,
+    ComputeMuscleFiberLengthRigidTendon,
     ComputeMuscleFiberLengthInstantaneousEquilibrium,
 )
-from ..muscle_models.compute_muscle_fiber_velocity import ComputeMuscleFiberVelocityFlexibleTendon
+from ..muscle_models.compute_muscle_fiber_velocity import ComputeMuscleFiberVelocityAsVariable
 
 
 class MuscleBiorbdModel(BiorbdModel):
@@ -75,7 +76,7 @@ class MuscleBiorbdModel(BiorbdModel):
         return len(self.muscles)
 
     @property
-    def muscle_fiber_length_mx_variables(self) -> MX:
+    def muscle_fiber_lengths_mx(self) -> MX:
         variables = []
         for muscle in self.muscles:
             if isinstance(muscle.compute_muscle_fiber_length, ComputeMuscleFiberLengthAsVariable):
@@ -83,10 +84,10 @@ class MuscleBiorbdModel(BiorbdModel):
         return vertcat(*variables)
 
     @property
-    def muscle_fiber_velocity_mx_variables(self) -> MX:
+    def muscle_fiber_velocities_mx(self) -> MX:
         variables = []
         for muscle in self.muscles:
-            if isinstance(muscle.compute_muscle_fiber_velocity, ComputeMuscleFiberVelocityFlexibleTendon):
+            if isinstance(muscle.compute_muscle_fiber_velocity, ComputeMuscleFiberVelocityAsVariable):
                 variables.append(muscle.compute_muscle_fiber_velocity.mx_variable)
         return vertcat(*variables)
 
@@ -232,11 +233,11 @@ class MuscleBiorbdModel(BiorbdModel):
         lengths = MX.zeros(self.nb_muscles, 1)
         for index, muscle in enumerate(self.muscles):
             computer = (
-                ComputeMuscleFiberLengthInstantaneousEquilibrium(
+                muscle.compute_muscle_fiber_length
+                if isinstance(muscle.compute_muscle_fiber_length, ComputeMuscleFiberLengthRigidTendon)
+                else ComputeMuscleFiberLengthInstantaneousEquilibrium(
                     mx_symbolic=muscle.compute_muscle_fiber_length.mx_variable
                 )
-                if isinstance(muscle.compute_muscle_fiber_length, ComputeMuscleFiberLengthAsVariable)
-                else muscle.compute_muscle_fiber_length
             )
 
             lengths[index] = computer(
@@ -250,7 +251,7 @@ class MuscleBiorbdModel(BiorbdModel):
 
         return lengths
 
-    def muscle_fiber_velocities(self, activations: MX, q: MX, qdot: MX) -> MX:
+    def muscle_fiber_velocities(self, activations: MX, q: MX, qdot: MX, muscle_fiber_lengths: MX) -> MX:
         """
         Compute the muscle velocities
 
@@ -262,6 +263,8 @@ class MuscleBiorbdModel(BiorbdModel):
             The generalized coordinates vector of size (n_dof x 1)
         qdot: MX
             The generalized velocities vector of size (n_dof x 1)
+        muscle_fiber_lengths: MX
+            The muscle fiber lengths vector of size (n_muscles x 1)
 
         Returns
         -------
@@ -280,10 +283,11 @@ class MuscleBiorbdModel(BiorbdModel):
                 activation=activations[index],
                 q=q,
                 qdot=qdot,
+                muscle_fiber_length=muscle_fiber_lengths[index],
             )
         return velocities
 
-    def muscle_forces(self, activations: MX, q: MX, qdot: MX) -> MX:
+    def muscle_forces(self, activations: MX, q: MX, qdot: MX, muscle_fiber_lengths: MX) -> MX:
         """
         Compute the muscle forces
 
@@ -295,6 +299,8 @@ class MuscleBiorbdModel(BiorbdModel):
             The generalized coordinates vector of size (n_dof x 1)
         qdot: MX
             The generalized velocities vector of size (n_dof x 1)
+        muscle_fiber_lengths: MX
+            The muscle fiber lengths vector of size (n_muscles x 1)
 
         Returns
         -------
@@ -302,8 +308,7 @@ class MuscleBiorbdModel(BiorbdModel):
             The muscle forces vector of size (n_muscles x 1)
         """
 
-        muscle_fiber_lengths = self.muscle_fiber_lengths(activations, q, qdot)
-        muscle_fiber_velocities = self.muscle_fiber_velocities(activations, q, qdot)
+        muscle_fiber_velocities = self.muscle_fiber_velocities(activations, q, qdot, muscle_fiber_lengths)
 
         forces = MX.zeros(self.nb_muscles, 1)
         for i, muscle in enumerate(self.muscles):
@@ -316,7 +321,7 @@ class MuscleBiorbdModel(BiorbdModel):
         return forces
 
     @override
-    def muscle_joint_torque(self, activations: MX, q: MX, qdot: MX) -> MX:
+    def muscle_joint_torque(self, activations: MX, q: MX, qdot: MX, muscle_fiber_lengths: MX) -> MX:
         """
         Compute the muscle joint torque
 
@@ -328,6 +333,8 @@ class MuscleBiorbdModel(BiorbdModel):
             The generalized coordinates vector of size (n_dof x 1)
         qdot: MX
             The generalized velocities vector of size (n_dof x 1)
+        muscle_fiber_lengths: MX
+            The muscle fiber lengths vector of size (n_muscles x 1)
 
         Returns
         -------
@@ -335,24 +342,9 @@ class MuscleBiorbdModel(BiorbdModel):
             The muscle joint torque vector of size (n_dof x 1)
         """
         muscle_tendon_length_jacobian = self.muscle_tendon_length_jacobian(q)
-        muscle_forces = self.muscle_forces(activations, q, qdot)
+        muscle_forces = self.muscle_forces(activations, q, qdot, muscle_fiber_lengths)
 
         return -muscle_tendon_length_jacobian.T @ muscle_forces
-
-    def configure_bioptim_dynamics(
-        self, ocp: OptimalControlProgram, nlp: NonLinearProgram, numerical_data_timeseries=None
-    ):
-        """
-        Configure the bioptim dynamics
-
-        Returns
-        -------
-        DynamicsFcn
-            The bioptim dynamics function
-        """
-        ConfigureProblem.configure_q(ocp, nlp, as_states=True, as_controls=False)
-        ConfigureProblem.configure_qdot(ocp, nlp, as_states=True, as_controls=False)
-        ConfigureProblem.configure_qddot(ocp, nlp, as_states=False, as_controls=False, as_states_dot=True)
 
     def to_casadi_function(self, mx_function: Callable[[Any], MX], *keys: Iterable[str]) -> Function:
         """
@@ -367,7 +359,7 @@ class MuscleBiorbdModel(BiorbdModel):
         mx_function: Callable
             The CasADi MX function to convert to a casadi function.
         keys: Iterable[str]
-            The keys of the variables to use in the function, limited to "q", "qdot", "activations".
+            The keys of the variables to use in the function, limited to "q", "qdot", "activations", "muscle_fiber_lengths", "muscle_fiber_velocities".
             The order of the keys must match the order of the arguments in the mx_function.
 
         Returns
@@ -384,15 +376,27 @@ class MuscleBiorbdModel(BiorbdModel):
                 keys_to_mx[key] = self.qdot_mx
             elif key == "activations":
                 keys_to_mx[key] = self.activations_mx
+            elif key == "muscle_fiber_lengths":
+                keys_to_mx[key] = self.muscle_fiber_lengths_mx
+            elif key == "muscle_fiber_velocities":
+                keys_to_mx[key] = self.muscle_fiber_velocities_mx
             else:
-                raise ValueError(f"Expected 'q', 'qdot' or 'activations', got {key}")
+                raise ValueError(
+                    f"Expected 'q', 'qdot', 'activations', 'muscle_fiber_lengths' or 'muscle_fiber_velocities', got {key}"
+                )
 
-        muscle_lengths_mx = self.muscle_fiber_length_mx_variables
-        muscle_velocities_mx = self.muscle_fiber_velocity_mx_variables
+        muscle_lengths_mx = self.muscle_fiber_lengths_mx
+        muscle_velocities_mx = self.muscle_fiber_velocities_mx
 
         return Function(
             "f",
-            [self.q_mx, self.qdot_mx, self.activations_mx, muscle_lengths_mx, muscle_velocities_mx],
+            [
+                self.q_mx,
+                self.qdot_mx,
+                self.activations_mx,
+                self.muscle_fiber_lengths_mx,
+                self.muscle_fiber_velocities_mx,
+            ],
             [mx_function(**keys_to_mx)],
             ["q", "qdot", "activations", "muscle_fiber_lengths", "muscle_fiber_velocities"],
             ["output"],

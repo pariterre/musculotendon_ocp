@@ -1,7 +1,7 @@
 from functools import partial
 from typing import Callable
 
-from casadi import MX, vertcat
+from casadi import MX
 from matplotlib import pyplot as plt
 from musculotendon_ocp import (
     MuscleBiorbdModel,
@@ -37,14 +37,16 @@ def compute_muscle_fiber_velocities(
 ) -> np.ndarray:
     velocities = [np.ndarray(len(all_q.T)) for _ in range(model.nb_muscles)]
 
-    muscle_fiber_velocities_func = model.to_casadi_function(model.muscle_fiber_velocities, "activations", "q", "qdot")
+    muscle_fiber_velocities_func = model.to_casadi_function(
+        model.muscle_fiber_velocities, "activations", "q", "qdot", "muscle_fiber_lengths"
+    )
 
     for i, (lengths, q, qdot) in enumerate(zip(all_muscle_lengths.T, all_q.T, all_qdot.T)):
         vel_all_muscles = muscle_fiber_velocities_func(
             activations=activations,
             q=q,
             qdot=qdot,
-            muscle_lengths=lengths,
+            muscle_fiber_lengths=lengths,
         )["output"].__array__()
         for m, vel_muscle in enumerate(vel_all_muscles):
             velocities[m][i] = vel_muscle
@@ -85,12 +87,14 @@ def dynamics(_, x, dynamics_functions: list[Callable], model: MuscleBiorbdModel,
 
 
 def prepare_muscle_fiber_velocities(model: MuscleBiorbdModel, activations: MX, q: MX, qdot: MX) -> MX:
-    muscle_fiber_velocities = model.muscle_fiber_velocities(activations=activations, q=q, qdot=qdot)
+    muscle_fiber_velocities = model.muscle_fiber_velocities(
+        activations=activations, q=q, qdot=qdot, muscle_fiber_lengths=model.muscle_fiber_lengths_mx
+    )
     return muscle_fiber_velocities
 
 
 def prepare_forward_dynamics(model: MuscleBiorbdModel, activations: MX, q: MX, qdot: MX) -> MX:
-    tau = model.muscle_joint_torque(activations, q, qdot)
+    tau = model.muscle_joint_torque(activations, q, qdot, muscle_fiber_lengths=model.muscle_fiber_lengths_mx)
     qddot = model.forward_dynamics(q, qdot, tau)
     return qddot
 

@@ -100,7 +100,9 @@ def test_muscle_model_hill_rigid_tendon_compute_tendon_length():
         maximal_velocity=5.0,
     )
 
-    assert_almost_equal(model.compute_tendon_length(muscle_fiber_length=0.09), tendon_slack_length)
+    assert_almost_equal(
+        model.compute_tendon_length(muscle_tendon_length=0.0, muscle_fiber_length=0.0), tendon_slack_length
+    )
 
 
 def test_muscle_model_hill_rigid_tendon_compute_muscle_force():

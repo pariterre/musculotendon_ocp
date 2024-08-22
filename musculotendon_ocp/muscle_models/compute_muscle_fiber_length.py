@@ -6,28 +6,6 @@ from casadi import MX, Function, rootfinder
 from .muscle_model_abstract import MuscleModelAbstract
 
 
-class ComputeMuscleFiberLengthRigidTendon:
-    """
-    This method assumes that the muscle model has a rigid tendon, meaning that the muscle fiber length is equal to the
-    musculo-tendon length minus the tendon slack length.
-    """
-
-    def __call__(
-        self,
-        muscle: MuscleModelAbstract,
-        model_kinematic_updated: biorbd.Model,
-        biorbd_muscle: biorbd.Muscle,
-        activation: MX,
-        q: MX,
-        qdot: MX,
-    ) -> biorbd.MX:
-        biorbd_muscle.updateOrientations(model_kinematic_updated, q)
-        muscle_tendon_length = biorbd_muscle.musculoTendonLength(model_kinematic_updated, q).to_mx()
-
-        # TODO Include the pennation angle?
-        return muscle_tendon_length - muscle.tendon_slack_length
-
-
 class ComputeMuscleFiberLengthAsVariable:
     """
     This method does not actually compute the muscle fiber length but returns a variable that represents the muscle. This
@@ -52,6 +30,28 @@ class ComputeMuscleFiberLengthAsVariable:
     ) -> biorbd.MX:
         # TODO Include the pennation angle?
         return self.mx_variable
+
+
+class ComputeMuscleFiberLengthRigidTendon(ComputeMuscleFiberLengthAsVariable):
+    """
+    This method assumes that the muscle model has a rigid tendon, meaning that the muscle fiber length is equal to the
+    musculo-tendon length minus the tendon slack length.
+    """
+
+    def __call__(
+        self,
+        muscle: MuscleModelAbstract,
+        model_kinematic_updated: biorbd.Model,
+        biorbd_muscle: biorbd.Muscle,
+        activation: MX,
+        q: MX,
+        qdot: MX,
+    ) -> biorbd.MX:
+        biorbd_muscle.updateOrientations(model_kinematic_updated, q)
+        muscle_tendon_length = biorbd_muscle.musculoTendonLength(model_kinematic_updated, q).to_mx()
+
+        # TODO Include the pennation angle?
+        return muscle_tendon_length - muscle.tendon_slack_length
 
 
 class ComputeMuscleFiberLengthInstantaneousEquilibrium(ComputeMuscleFiberLengthAsVariable):
@@ -112,4 +112,4 @@ class ComputeMuscleFiberLengthInstantaneousEquilibrium(ComputeMuscleFiberLengthA
             {"error_on_fail": True, "enable_fd": False, "print_in": False, "print_out": False, "max_num_dir": 10},
         )
         # Evaluate the muscle fiber length
-        return newton_method(i0=self.mx_variable, i1=activation, i2=q)["o0"]
+        return newton_method(i0=0, i1=activation, i2=q)["o0"]

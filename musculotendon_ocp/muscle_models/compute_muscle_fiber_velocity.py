@@ -4,36 +4,13 @@ import biorbd_casadi as biorbd
 from casadi import MX, Function, rootfinder
 
 from .muscle_model_abstract import MuscleModelAbstract
-from .compute_muscle_fiber_length import ComputeMuscleFiberLengthAsVariable
+from .compute_muscle_fiber_length import ComputeMuscleFiberLengthRigidTendon
 
 
-class ComputeMuscleFiberVelocityRigidTendon:
+class ComputeMuscleFiberVelocityAsVariable:
     """
-    This method assumes that the muscle model has a rigid tendon, meaning that the muscle fiber length is equal to the
-    musculo-tendon length minus the tendon slack length. The velocity is therefore the velocity of the points on which the
-    muscle is attached.
-    """
-
-    def __call__(
-        self,
-        muscle: MuscleModelAbstract,
-        model_kinematic_updated: biorbd.Model,
-        biorbd_muscle: biorbd.Muscle,
-        activation: MX,
-        q: MX,
-        qdot: MX,
-    ) -> biorbd.MX:
-        biorbd_muscle.updateOrientations(model_kinematic_updated, q, qdot)
-
-        mus_position: biorbd.MuscleGeometry = biorbd_muscle.position()
-        mus_jacobian = mus_position.jacobianLength().to_mx()
-
-        return mus_jacobian @ qdot
-
-
-class ComputeMuscleFiberVelocityFlexibleTendon:
-    """
-    Compute the muscle fiber velocity by inverting the force-velocity relationship.
+    This method does not actually compute the muscle fiber velocity but returns a variable that represents the muscle
+    fiber velocity. This can be useful when the muscle fiber velocity is a variable in the optimization problem.
     """
 
     def __init__(self, mx_symbolic: MX = None) -> None:
@@ -51,9 +28,53 @@ class ComputeMuscleFiberVelocityFlexibleTendon:
         activation: MX,
         q: MX,
         qdot: MX,
+        muscle_fiber_length: MX,
     ) -> biorbd.MX:
-        if not isinstance(muscle.compute_muscle_fiber_length, ComputeMuscleFiberLengthAsVariable):
-            raise ValueError("The compute_muscle_fiber_length must be a ComputeMuscleFiberLengthAsVariable")
+        return self.mx_variable
+
+
+class ComputeMuscleFiberVelocityRigidTendon(ComputeMuscleFiberVelocityAsVariable):
+    """
+    This method assumes that the muscle model has a rigid tendon, meaning that the muscle fiber length is equal to the
+    musculo-tendon length minus the tendon slack length. The velocity is therefore the velocity of the points on which the
+    muscle is attached.
+    """
+
+    def __call__(
+        self,
+        muscle: MuscleModelAbstract,
+        model_kinematic_updated: biorbd.Model,
+        biorbd_muscle: biorbd.Muscle,
+        activation: MX,
+        q: MX,
+        qdot: MX,
+        muscle_fiber_length: MX,
+    ) -> biorbd.MX:
+        biorbd_muscle.updateOrientations(model_kinematic_updated, q, qdot)
+
+        mus_position: biorbd.MuscleGeometry = biorbd_muscle.position()
+        mus_jacobian = mus_position.jacobianLength().to_mx()
+
+        return mus_jacobian @ qdot
+
+
+class ComputeMuscleFiberVelocityFlexibleTendon(ComputeMuscleFiberVelocityAsVariable):
+    """
+    Compute the muscle fiber velocity by inverting the force-velocity relationship.
+    """
+
+    def __call__(
+        self,
+        muscle: MuscleModelAbstract,
+        model_kinematic_updated: biorbd.Model,
+        biorbd_muscle: biorbd.Muscle,
+        activation: MX,
+        q: MX,
+        qdot: MX,
+        muscle_fiber_length: MX,
+    ) -> biorbd.MX:
+        if isinstance(muscle.compute_muscle_fiber_length, ComputeMuscleFiberLengthRigidTendon):
+            raise ValueError("The compute_muscle_fiber_length must not be a ComputeMuscleFiberLengthRigidTendon")
 
         # Alias for the MX variables
         activation_mx = MX.sym("activation", 1, 1)
@@ -61,22 +82,16 @@ class ComputeMuscleFiberVelocityFlexibleTendon:
         muscle_fiber_length_mx = muscle.compute_muscle_fiber_length.mx_variable
 
         # Compute necessary variables
-        muscle_fiber_length = muscle.compute_muscle_fiber_length(
-            muscle=muscle,
-            model_kinematic_updated=model_kinematic_updated,
-            biorbd_muscle=biorbd_muscle,
-            activation=activation_mx,
-            q=q,
-            qdot=qdot,
-        )
         biorbd_muscle.updateOrientations(model_kinematic_updated, q)
-        tendon_length = biorbd_muscle.musculoTendonLength(model_kinematic_updated, q).to_mx()
+        tendon_length = muscle.compute_tendon_length(
+            biorbd_muscle.musculoTendonLength(model_kinematic_updated, q).to_mx(), muscle_fiber_length
+        )
 
         # Compute the muscle and tendon forces
         force_tendon = muscle.compute_tendon_force(tendon_length=tendon_length)
         force_muscle = muscle.compute_muscle_force(
             activation=activation_mx,
-            muscle_fiber_length=muscle_fiber_length,
+            muscle_fiber_length=muscle_fiber_length_mx,
             muscle_fiber_velocity=muscle_fiber_velocity_mx,
         )
 
@@ -108,7 +123,7 @@ class ComputeMuscleFiberVelocityFlexibleTendon:
             {"error_on_fail": True, "enable_fd": False, "print_in": False, "print_out": False, "max_num_dir": 10},
         )
 
-        return newton_method(i0=self.mx_variable, i1=muscle_fiber_length, i2=activation, i3=q)["o0"]
+        return newton_method(i0=0, i1=muscle_fiber_length, i2=activation, i3=q)["o0"]
 
 
 # TODO Implement the linearized version of the flexible tendon
