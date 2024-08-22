@@ -1,14 +1,12 @@
-import re
-
 from musculotendon_ocp import (
     MuscleModelHillFlexibleTendon,
+    MuscleModelHillFlexibleTendonAlwaysPositive,
     ForcePassiveHillType,
     ForceActiveHillType,
     ForceDampingConstant,
     ForceVelocityHillType,
 )
 from numpy.testing import assert_almost_equal
-import pytest
 
 
 def test_muscle_model_hill_flexible_tendon():
@@ -92,6 +90,20 @@ def test_muscle_model_hill_flexible_tendon_compute_tendon_length():
 
 def test_muscle_model_hill_flexible_tendon_compute_tendon_force():
     model = MuscleModelHillFlexibleTendon(
+        name="Dummy", maximal_force=123, optimal_length=0.123, tendon_slack_length=0.123, maximal_velocity=5.0
+    )
+
+    # Test exact values
+    assert_almost_equal(model.compute_tendon_force(tendon_length=0.15), 516.9806553196128)
+
+    # Test values based on qualitative behavior
+    assert model.compute_tendon_force(0.123) < 0.0
+    assert model.compute_tendon_force(0.123 / 2) < 0.0
+    assert model.compute_tendon_force(0.123 * 2) > 0.0
+
+
+def test_muscle_model_hill_flexible_tendon_always_positive_compute_tendon_force():
+    model = MuscleModelHillFlexibleTendonAlwaysPositive(
         name="Dummy", maximal_force=123, optimal_length=0.123, tendon_slack_length=0.123, maximal_velocity=5.0
     )
 

@@ -5,7 +5,7 @@ from casadi import MX
 from musculotendon_ocp import (
     MuscleBiorbdModel,
     MuscleModelHillRigidTendon,
-    MuscleModelHillFlexibleTendon,
+    MuscleModelHillFlexibleTendonAlwaysPositive,
     ComputeMuscleFiberLengthRigidTendon,
     ComputeMuscleFiberLengthAsVariable,
     ComputeMuscleFiberLengthInstantaneousEquilibrium,
@@ -82,7 +82,7 @@ def test_compute_muscle_fiber_length_as_variable():
 
 
 def test_compute_muscle_fiber_length_instantaneous_equilibrium():
-    mus = MuscleModelHillFlexibleTendon(
+    mus = MuscleModelHillFlexibleTendonAlwaysPositive(
         name="Mus1", maximal_force=500, optimal_length=0.1, tendon_slack_length=0.123, maximal_velocity=5.0
     )
     model = MuscleBiorbdModel(model_path, muscles=[mus])

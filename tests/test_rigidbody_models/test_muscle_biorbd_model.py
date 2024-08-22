@@ -5,7 +5,7 @@ from casadi import MX, Function
 from musculotendon_ocp import (
     MuscleBiorbdModel,
     MuscleModelHillRigidTendon,
-    MuscleModelHillFlexibleTendon,
+    MuscleModelHillFlexibleTendonAlwaysPositive,
     ComputeMuscleFiberLengthAsVariable,
     ComputeMuscleFiberVelocityFlexibleTendon,
 )
@@ -81,7 +81,7 @@ def test_muscle_biorbd_model_get_mx_variables():
         muscles=[
             MuscleModelHillRigidTendon(name="Mus1", **dummy_params),
             MuscleModelHillRigidTendon(name="Mus1", **dummy_params),
-            MuscleModelHillFlexibleTendon(
+            MuscleModelHillFlexibleTendonAlwaysPositive(
                 name="Mus1",
                 compute_muscle_fiber_length=ComputeMuscleFiberLengthAsVariable(mx_symbolic=muscle_fiber_length_mx),
                 compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityFlexibleTendon(
@@ -89,7 +89,7 @@ def test_muscle_biorbd_model_get_mx_variables():
                 ),
                 **dummy_params
             ),
-            MuscleModelHillFlexibleTendon(name="Mus1", **dummy_params),
+            MuscleModelHillFlexibleTendonAlwaysPositive(name="Mus1", **dummy_params),
         ],
     )
 
@@ -122,7 +122,7 @@ def test_muscle_biorbd_model_get_mx_variables():
 
 def test_muscle_tendon_lengths():
     rigid = MuscleModelHillRigidTendon
-    flexible = MuscleModelHillFlexibleTendon
+    flexible = MuscleModelHillFlexibleTendonAlwaysPositive
 
     model = MuscleBiorbdModel(
         model_path,
@@ -143,7 +143,7 @@ def test_muscle_tendon_lengths():
 
 def test_muscle_biorbd_model_muscle_tendon_length_jacobian():
     rigid = MuscleModelHillRigidTendon
-    flexible = MuscleModelHillFlexibleTendon
+    flexible = MuscleModelHillFlexibleTendonAlwaysPositive
 
     model = MuscleBiorbdModel(
         model_path,
@@ -178,7 +178,7 @@ def test_muscle_biorbd_model_muscle_jacobian():
 
 def test_tendon_lengths():
     rigid = MuscleModelHillRigidTendon
-    flexible = MuscleModelHillFlexibleTendon
+    flexible = MuscleModelHillFlexibleTendonAlwaysPositive
 
     model = MuscleBiorbdModel(
         model_path,
@@ -208,7 +208,7 @@ def test_tendon_lengths():
 
 def test_tendon_forces():
     rigid = MuscleModelHillRigidTendon
-    flexible = MuscleModelHillFlexibleTendon
+    flexible = MuscleModelHillFlexibleTendonAlwaysPositive
 
     model = MuscleBiorbdModel(
         model_path,
@@ -237,7 +237,7 @@ def test_tendon_forces():
 
 def test_muscle_biorbd_model_muscle_fiber_lengths():
     rigid = MuscleModelHillRigidTendon
-    flexible = MuscleModelHillFlexibleTendon
+    flexible = MuscleModelHillFlexibleTendonAlwaysPositive
 
     model = MuscleBiorbdModel(
         model_path,
@@ -266,7 +266,7 @@ def test_muscle_biorbd_model_muscle_fiber_lengths():
 
 def test_muscle_biorbd_model_muscle_fiber_lengths_equilibrated():
     rigid = MuscleModelHillRigidTendon
-    flexible = MuscleModelHillFlexibleTendon
+    flexible = MuscleModelHillFlexibleTendonAlwaysPositive
 
     model = MuscleBiorbdModel(
         model_path,
@@ -295,7 +295,7 @@ def test_muscle_biorbd_model_muscle_fiber_lengths_equilibrated():
 
 def test_muscle_biorbd_model_muscle_fiber_velocities():
     rigid = MuscleModelHillRigidTendon
-    flexible = MuscleModelHillFlexibleTendon
+    flexible = MuscleModelHillFlexibleTendonAlwaysPositive
 
     model = MuscleBiorbdModel(
         model_path,
@@ -343,7 +343,7 @@ def test_muscle_biorbd_model_muscle_fiber_velocities():
 
 def test_muscle_biorbd_model_muscle_forces():
     rigid = MuscleModelHillRigidTendon
-    flexible = MuscleModelHillFlexibleTendon
+    flexible = MuscleModelHillFlexibleTendonAlwaysPositive
 
     model = MuscleBiorbdModel(
         model_path,
@@ -381,7 +381,7 @@ def test_muscle_biorbd_model_muscle_forces():
 
 def test_muscle_biorbd_model_muscle_joint_torque():
     rigid = MuscleModelHillRigidTendon
-    flexible = MuscleModelHillFlexibleTendon
+    flexible = MuscleModelHillFlexibleTendonAlwaysPositive
 
     model = MuscleBiorbdModel(
         model_path,

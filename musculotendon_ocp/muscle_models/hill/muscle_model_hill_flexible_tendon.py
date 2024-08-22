@@ -66,7 +66,19 @@ class MuscleModelHillFlexibleTendon(MuscleModelHillRigidTendon):
     def compute_tendon_force(self, tendon_length: MX) -> MX:
         normalized_tendon_length = self.normalize_tendon_length(tendon_length)
 
-        # TODO @ipuch Keep this offset in the model? ADD THE CAPABILITY
-        normalized_tendon_slack_length = 1.0
-        zero_offset = self.c1 * exp(self.kt * (normalized_tendon_slack_length - self.c2)) - self.c3
-        return self.c1 * exp(self.kt * (normalized_tendon_length - self.c2)) - self.c3 - zero_offset
+        return self.c1 * exp(self.kt * (normalized_tendon_length - self.c2)) - self.c3
+
+
+class MuscleModelHillFlexibleTendonAlwaysPositive(MuscleModelHillFlexibleTendon):
+    @property
+    def offset(self) -> float:
+        """
+        Get the offset to ensure the tendon force is always positive, by offsetting the force by the value at slack length
+        """
+        return super(MuscleModelHillFlexibleTendonAlwaysPositive, self).compute_tendon_force(self.tendon_slack_length)
+
+    @override
+    def compute_tendon_force(self, tendon_length: MX) -> MX:
+        return (
+            super(MuscleModelHillFlexibleTendonAlwaysPositive, self).compute_tendon_force(tendon_length) - self.offset
+        )

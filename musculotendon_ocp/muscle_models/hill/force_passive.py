@@ -32,7 +32,4 @@ class ForcePassiveAlwaysPositiveHillType(ForcePassiveHillType):
         return super(ForcePassiveAlwaysPositiveHillType, self).__call__(0.0)
 
     def __call__(self, normalized_muscle_fiber_length: MX) -> MX:
-        """
-        Same as ForcePassiveHillType but an offset is added to ensure the force is always positive
-        """
         return super(ForcePassiveAlwaysPositiveHillType, self).__call__(normalized_muscle_fiber_length) - self.offset
