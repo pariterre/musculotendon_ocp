@@ -3,7 +3,7 @@ from functools import cached_property
 import biorbd_casadi as biorbd
 from casadi import MX, Function, rootfinder
 
-from .muscle_model_abstract import MuscleModelAbstract
+from .muscle_hill_model_abstract import MuscleHillModelAbstract
 
 
 class ComputeMuscleFiberLengthAsVariable:
@@ -21,7 +21,7 @@ class ComputeMuscleFiberLengthAsVariable:
 
     def __call__(
         self,
-        muscle: MuscleModelAbstract,
+        muscle: MuscleHillModelAbstract,
         model_kinematic_updated: biorbd.Model,
         biorbd_muscle: biorbd.Muscle,
         activation: MX,
@@ -40,7 +40,7 @@ class ComputeMuscleFiberLengthRigidTendon(ComputeMuscleFiberLengthAsVariable):
 
     def __call__(
         self,
-        muscle: MuscleModelAbstract,
+        muscle: MuscleHillModelAbstract,
         model_kinematic_updated: biorbd.Model,
         biorbd_muscle: biorbd.Muscle,
         activation: MX,
@@ -64,16 +64,16 @@ class ComputeMuscleFiberLengthInstantaneousEquilibrium(ComputeMuscleFiberLengthA
 
     def __call__(
         self,
-        muscle: MuscleModelAbstract,
+        muscle: MuscleHillModelAbstract,
         model_kinematic_updated: biorbd.Model,
         biorbd_muscle: biorbd.Muscle,
         activation: MX,
         q: MX,
         qdot: MX,
     ) -> biorbd.MX:
-        from .hill.muscle_model_hill_flexible_tendon import MuscleModelHillFlexibleTendon
+        from .muscle_hill_model_flexible_tendon import MuscleHillModelFlexibleTendon
 
-        if not isinstance(muscle, MuscleModelHillFlexibleTendon):
+        if not isinstance(muscle, MuscleHillModelFlexibleTendon):
             raise ValueError("The muscle model must be a flexible tendon to compute the instantaneous equilibrium")
 
         # Alias for the MX variables

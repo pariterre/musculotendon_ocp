@@ -3,7 +3,7 @@ from typing import Callable
 
 from casadi import MX
 from matplotlib import pyplot as plt
-from musculotendon_ocp import MuscleBiorbdModel, MuscleModelHillRigidTendon
+from musculotendon_ocp import MuscleBiorbdModel, MuscleHillModelRigidTendon
 import numpy as np
 from scipy.integrate import solve_ivp
 
@@ -58,7 +58,7 @@ def main():
     model = MuscleBiorbdModel(
         "musculotendon_ocp/rigidbody_models/models/one_muscle_holding_a_cube.bioMod",
         muscles=[
-            MuscleModelHillRigidTendon(
+            MuscleHillModelRigidTendon(
                 name="Mus1", maximal_force=500, optimal_length=0.1, tendon_slack_length=0.16, maximal_velocity=5.0
             ),
         ],

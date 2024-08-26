@@ -4,8 +4,8 @@ import os
 from casadi import MX
 from musculotendon_ocp import (
     MuscleBiorbdModel,
-    MuscleModelHillRigidTendon,
-    MuscleModelHillFlexibleTendonAlwaysPositive,
+    MuscleHillModelRigidTendon,
+    MuscleHillModelFlexibleTendonAlwaysPositive,
     ComputeMuscleFiberLengthRigidTendon,
     ComputeMuscleFiberLengthAsVariable,
     ComputeMuscleFiberLengthInstantaneousEquilibrium,
@@ -21,7 +21,7 @@ model_path = (
 
 
 def test_compute_muscle_fiber_length_rigid_tendon():
-    mus = MuscleModelHillRigidTendon(
+    mus = MuscleHillModelRigidTendon(
         name="Mus1", maximal_force=500, optimal_length=0.1, tendon_slack_length=0.123, maximal_velocity=5.0
     )
     model = MuscleBiorbdModel(model_path, muscles=[mus])
@@ -46,7 +46,7 @@ def test_compute_muscle_fiber_length_rigid_tendon():
 
 
 def test_compute_muscle_fiber_length_as_variable():
-    mus = MuscleModelHillRigidTendon(
+    mus = MuscleHillModelRigidTendon(
         name="Mus1", maximal_force=500, optimal_length=0.1, tendon_slack_length=0.123, maximal_velocity=5.0
     )
     model = MuscleBiorbdModel(model_path, muscles=[mus])
@@ -82,7 +82,7 @@ def test_compute_muscle_fiber_length_as_variable():
 
 
 def test_compute_muscle_fiber_length_instantaneous_equilibrium():
-    mus = MuscleModelHillFlexibleTendonAlwaysPositive(
+    mus = MuscleHillModelFlexibleTendonAlwaysPositive(
         name="Mus1", maximal_force=500, optimal_length=0.1, tendon_slack_length=0.123, maximal_velocity=5.0
     )
     model = MuscleBiorbdModel(model_path, muscles=[mus])
@@ -107,7 +107,7 @@ def test_compute_muscle_fiber_length_instantaneous_equilibrium():
 
 
 def test_compute_muscle_fiber_length_instantaneous_equilibrium_wrong_constructor():
-    mus = MuscleModelHillRigidTendon(
+    mus = MuscleHillModelRigidTendon(
         name="Mus1", maximal_force=500, optimal_length=0.1, tendon_slack_length=0.123, maximal_velocity=5.0
     )
     model = MuscleBiorbdModel(model_path, muscles=[mus])

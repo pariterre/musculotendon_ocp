@@ -1,7 +1,7 @@
 import re
 
 from musculotendon_ocp import (
-    MuscleModelHillRigidTendon,
+    MuscleHillModelRigidTendon,
     ComputeForcePassiveHillType,
     ComputeForceActiveHillType,
     ComputeForceDampingConstant,
@@ -11,7 +11,7 @@ from numpy.testing import assert_almost_equal
 import pytest
 
 
-def test_muscle_model_hill_rigid_tendon():
+def test_muscle_hill_model_rigid_tendon():
     name = "Dummy"
     maximal_force = 123
     optimal_length = 0.123
@@ -22,7 +22,7 @@ def test_muscle_model_hill_rigid_tendon():
     force_damping = ComputeForceDampingConstant()
     force_velocity = ComputeForceVelocityHillType()
 
-    model = MuscleModelHillRigidTendon(
+    model = MuscleHillModelRigidTendon(
         name=name,
         maximal_force=maximal_force,
         optimal_length=optimal_length,
@@ -44,7 +44,7 @@ def test_muscle_model_hill_rigid_tendon():
     assert id(model.compute_force_damping) == id(force_damping)
     assert id(model.compute_force_velocity) == id(force_velocity)
 
-    model_default = MuscleModelHillRigidTendon(
+    model_default = MuscleHillModelRigidTendon(
         name=name,
         maximal_force=maximal_force,
         optimal_length=optimal_length,
@@ -57,9 +57,9 @@ def test_muscle_model_hill_rigid_tendon():
     assert model_default.compute_force_velocity.__dict__ == ComputeForceVelocityHillType().__dict__
 
 
-def test_muscle_model_hill_rigid_tendon_normalize_muscle_fiber_length():
+def test_muscle_hill_model_rigid_tendon_normalize_muscle_fiber_length():
     optimal_length = 0.123
-    model = MuscleModelHillRigidTendon(
+    model = MuscleHillModelRigidTendon(
         name="Dummy", maximal_force=123, optimal_length=optimal_length, tendon_slack_length=0.123, maximal_velocity=5.0
     )
 
@@ -67,9 +67,9 @@ def test_muscle_model_hill_rigid_tendon_normalize_muscle_fiber_length():
     assert_almost_equal(model.normalize_muscle_fiber_length(fiber_length), fiber_length / optimal_length)
 
 
-def test_muscle_model_hill_rigid_tendon_normalize_muscle_fiber_velocity():
+def test_muscle_hill_model_rigid_tendon_normalize_muscle_fiber_velocity():
     maximal_velocity = 0.456
-    model = MuscleModelHillRigidTendon(
+    model = MuscleHillModelRigidTendon(
         name="Dummy",
         maximal_force=123,
         optimal_length=0.123,
@@ -81,8 +81,8 @@ def test_muscle_model_hill_rigid_tendon_normalize_muscle_fiber_velocity():
     assert_almost_equal(model.normalize_muscle_fiber_velocity(fiber_velocity), fiber_velocity / maximal_velocity)
 
 
-def test_muscle_model_hill_rigid_tendon_normalize_tendon_length():
-    model = MuscleModelHillRigidTendon(
+def test_muscle_hill_model_rigid_tendon_normalize_tendon_length():
+    model = MuscleHillModelRigidTendon(
         name="Dummy", maximal_force=123, optimal_length=0.123, tendon_slack_length=0.123, maximal_velocity=5.0
     )
 
@@ -90,9 +90,9 @@ def test_muscle_model_hill_rigid_tendon_normalize_tendon_length():
         model.normalize_tendon_length(tendon_length=0.456)
 
 
-def test_muscle_model_hill_rigid_tendon_compute_tendon_length():
+def test_muscle_hill_model_rigid_tendon_compute_tendon_length():
     tendon_slack_length = 0.123
-    model = MuscleModelHillRigidTendon(
+    model = MuscleHillModelRigidTendon(
         name="Dummy",
         maximal_force=123,
         optimal_length=0.123,
@@ -105,8 +105,8 @@ def test_muscle_model_hill_rigid_tendon_compute_tendon_length():
     )
 
 
-def test_muscle_model_hill_rigid_tendon_compute_muscle_force():
-    model = MuscleModelHillRigidTendon(
+def test_muscle_hill_model_rigid_tendon_compute_muscle_force():
+    model = MuscleHillModelRigidTendon(
         name="Dummy", maximal_force=123, optimal_length=0.123, tendon_slack_length=0.123, maximal_velocity=5.0
     )
 
@@ -121,9 +121,9 @@ def test_muscle_model_hill_rigid_tendon_compute_muscle_force():
     assert 2 * model.compute_muscle_force(0.123, 0.09, 5) < model.compute_muscle_force(0.123, 0.09 * 2, 5)
 
 
-def test_muscle_model_hill_rigid_tendon_compute_tendon_force():
+def test_muscle_hill_model_rigid_tendon_compute_tendon_force():
     tendon_slack_length = 0.123
-    model = MuscleModelHillRigidTendon(
+    model = MuscleHillModelRigidTendon(
         name="Dummy",
         maximal_force=123,
         optimal_length=0.123,
@@ -140,12 +140,12 @@ def test_muscle_model_hill_rigid_tendon_compute_tendon_force():
     assert model.compute_tendon_force(tendon_slack_length * 2) == 0.0
 
 
-def test_muscle_model_hill_rigid_tendon_wrong_constructor():
+def test_muscle_hill_model_rigid_tendon_wrong_constructor():
     with pytest.raises(
         TypeError,
         match=re.escape(
-            "MuscleModelHillRigidTendon.__init__() missing 5 required positional arguments: "
+            "MuscleHillModelRigidTendon.__init__() missing 5 required positional arguments: "
             "'name', 'maximal_force', 'optimal_length', 'tendon_slack_length', and 'maximal_velocity'"
         ),
     ):
-        MuscleModelHillRigidTendon()
+        MuscleHillModelRigidTendon()

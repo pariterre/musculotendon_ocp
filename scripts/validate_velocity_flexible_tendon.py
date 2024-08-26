@@ -5,9 +5,9 @@ from casadi import MX
 from matplotlib import pyplot as plt
 from musculotendon_ocp import (
     MuscleBiorbdModel,
-    MuscleModelHillFlexibleTendon,
+    MuscleHillModelFlexibleTendon,
     ComputeMuscleFiberLengthAsVariable,
-    ComputeMuscleFiberVelocityFlexibleTendonImplicit,
+    ComputeMuscleFiberVelocityFlexibleTendonExplicit,
     ComputeForceDampingLinear,
 )
 import numpy as np
@@ -103,7 +103,7 @@ def main():
     model = MuscleBiorbdModel(
         "musculotendon_ocp/rigidbody_models/models/one_muscle_holding_a_cube.bioMod",
         muscles=[
-            MuscleModelHillFlexibleTendon(
+            MuscleHillModelFlexibleTendon(
                 name="Mus1",
                 maximal_force=1000,
                 optimal_length=0.1,
@@ -111,7 +111,7 @@ def main():
                 compute_force_damping=ComputeForceDampingLinear(factor=0.1),
                 maximal_velocity=5.0,
                 compute_muscle_fiber_length=ComputeMuscleFiberLengthAsVariable(),
-                compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityFlexibleTendonImplicit(),
+                compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityFlexibleTendonExplicit(),
             ),
         ],
     )

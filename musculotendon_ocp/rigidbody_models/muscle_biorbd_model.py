@@ -5,17 +5,17 @@ import biorbd_casadi as biorbd
 from bioptim import BiorbdModel, OptimalControlProgram, NonLinearProgram, ConfigureProblem
 from casadi import MX, DM, Function, vertcat
 
-from ..muscle_models.muscle_model_abstract import MuscleModelAbstract
-from ..muscle_models.compute_muscle_fiber_length import (
+from ..muscle_hill_models.muscle_hill_model_abstract import MuscleHillModelAbstract
+from ..muscle_hill_models.compute_muscle_fiber_length import (
     ComputeMuscleFiberLengthAsVariable,
     ComputeMuscleFiberLengthRigidTendon,
     ComputeMuscleFiberLengthInstantaneousEquilibrium,
 )
-from ..muscle_models.compute_muscle_fiber_velocity import ComputeMuscleFiberVelocityAsVariable
+from ..muscle_hill_models.compute_muscle_fiber_velocity import ComputeMuscleFiberVelocityAsVariable
 
 
 class MuscleBiorbdModel(BiorbdModel):
-    def __init__(self, bio_model: str, muscles: Iterable[MuscleModelAbstract], *args, **kwargs):
+    def __init__(self, bio_model: str, muscles: Iterable[MuscleHillModelAbstract], *args, **kwargs):
         super().__init__(bio_model, *args, **kwargs)
 
         self._muscle_index_to_biorbd_model = []
@@ -129,7 +129,7 @@ class MuscleBiorbdModel(BiorbdModel):
 
         out = []
         for index in range(self.nb_muscles):
-            muscle: MuscleModelAbstract = self.muscles[index]
+            muscle: MuscleHillModelAbstract = self.muscles[index]
 
             muscle_fiber_length = muscle.compute_muscle_fiber_length(
                 muscle=muscle,

@@ -3,7 +3,7 @@ from functools import cached_property
 import biorbd_casadi as biorbd
 from casadi import MX, Function, rootfinder, cos
 
-from .muscle_model_abstract import MuscleModelAbstract
+from .muscle_hill_model_abstract import MuscleHillModelAbstract
 from .compute_muscle_fiber_length import ComputeMuscleFiberLengthRigidTendon
 
 
@@ -22,7 +22,7 @@ class ComputeMuscleFiberVelocityAsVariable:
 
     def __call__(
         self,
-        muscle: MuscleModelAbstract,
+        muscle: MuscleHillModelAbstract,
         model_kinematic_updated: biorbd.Model,
         biorbd_muscle: biorbd.Muscle,
         activation: MX,
@@ -42,7 +42,7 @@ class ComputeMuscleFiberVelocityRigidTendon(ComputeMuscleFiberVelocityAsVariable
 
     def __call__(
         self,
-        muscle: MuscleModelAbstract,
+        muscle: MuscleHillModelAbstract,
         model_kinematic_updated: biorbd.Model,
         biorbd_muscle: biorbd.Muscle,
         activation: MX,
@@ -65,7 +65,7 @@ class ComputeMuscleFiberVelocityFlexibleTendonImplicit(ComputeMuscleFiberVelocit
 
     def __call__(
         self,
-        muscle: MuscleModelAbstract,
+        muscle: MuscleHillModelAbstract,
         model_kinematic_updated: biorbd.Model,
         biorbd_muscle: biorbd.Muscle,
         activation: MX,
@@ -126,7 +126,7 @@ class ComputeMuscleFiberVelocityFlexibleTendonExplicit(ComputeMuscleFiberVelocit
 
     def __call__(
         self,
-        muscle: MuscleModelAbstract,
+        muscle: MuscleHillModelAbstract,
         model_kinematic_updated: biorbd.Model,
         biorbd_muscle: biorbd.Muscle,
         activation: MX,
@@ -149,7 +149,7 @@ class ComputeMuscleFiberVelocityFlexibleTendonExplicit(ComputeMuscleFiberVelocit
         )
 
         # Compute the muscle and tendon forces
-        muscle_velocity = muscle.compute_muscle_force_velocity_inverse(
+        muscle_velocity = muscle.compute_force_velocity.inverse(
             activation=activation_mx, muscle_fiber_length=muscle_fiber_length, tendon_length=tendon_length
         )
 

@@ -1,12 +1,12 @@
 from typing import override
 
 from casadi import MX
-from musculotendon_ocp.muscle_models.muscle_model_abstract import MuscleModelAbstract
+from musculotendon_ocp.muscle_hill_models.muscle_hill_model_abstract import MuscleHillModelAbstract
 import numpy as np
 import pytest
 
 
-class DummyMuscleModelAbstract(MuscleModelAbstract):
+class DummyMuscleModelAbstract(MuscleHillModelAbstract):
     @override
     def normalize_muscle_fiber_length(self, muscle_fiber_length: MX) -> MX:
         pass
@@ -37,7 +37,7 @@ class DummyMuscleModelAbstract(MuscleModelAbstract):
         pass
 
 
-def test_muscle_model_hill_rigid_tendon_checking_inputs():
+def test_muscle_hill_model_rigid_tendon_checking_inputs():
     with pytest.raises(ValueError, match="The maximal force must be positive"):
         DummyMuscleModelAbstract(
             name="Dummy",
@@ -45,6 +45,10 @@ def test_muscle_model_hill_rigid_tendon_checking_inputs():
             optimal_length=0.123,
             tendon_slack_length=0.123,
             maximal_velocity=0.123,
+            compute_force_passive=None,
+            compute_force_active=None,
+            compute_force_velocity=None,
+            compute_force_damping=None,
             compute_pennation_angle=None,
             compute_muscle_fiber_length=None,
             compute_muscle_fiber_velocity=None,
@@ -57,6 +61,10 @@ def test_muscle_model_hill_rigid_tendon_checking_inputs():
             optimal_length=-0.123,
             tendon_slack_length=0.123,
             maximal_velocity=0.123,
+            compute_force_passive=None,
+            compute_force_active=None,
+            compute_force_velocity=None,
+            compute_force_damping=None,
             compute_pennation_angle=None,
             compute_muscle_fiber_length=None,
             compute_muscle_fiber_velocity=None,
@@ -69,6 +77,10 @@ def test_muscle_model_hill_rigid_tendon_checking_inputs():
             optimal_length=0.123,
             tendon_slack_length=-0.123,
             maximal_velocity=0.123,
+            compute_force_passive=None,
+            compute_force_active=None,
+            compute_force_velocity=None,
+            compute_force_damping=None,
             compute_pennation_angle=None,
             compute_muscle_fiber_length=None,
             compute_muscle_fiber_velocity=None,
@@ -81,6 +93,10 @@ def test_muscle_model_hill_rigid_tendon_checking_inputs():
             optimal_length=0.123,
             tendon_slack_length=0.123,
             maximal_velocity=-0.123,
+            compute_force_passive=None,
+            compute_force_active=None,
+            compute_force_velocity=None,
+            compute_force_damping=None,
             compute_pennation_angle=None,
             compute_muscle_fiber_length=None,
             compute_muscle_fiber_velocity=None,
@@ -94,6 +110,10 @@ def test_get_mx_variables():
         optimal_length=0.123,
         tendon_slack_length=0.123,
         maximal_velocity=0.123,
+        compute_force_passive=None,
+        compute_force_active=None,
+        compute_force_velocity=None,
+        compute_force_damping=None,
         compute_pennation_angle=None,
         compute_muscle_fiber_length=None,
         compute_muscle_fiber_velocity=None,
@@ -120,6 +140,10 @@ def test_muscle_model_abstract_casadi_function_interface():
         optimal_length=0.123,
         tendon_slack_length=0.123,
         maximal_velocity=0.123,
+        compute_force_passive=None,
+        compute_force_active=None,
+        compute_force_velocity=None,
+        compute_force_damping=None,
         compute_pennation_angle=None,
         compute_muscle_fiber_length=None,
         compute_muscle_fiber_velocity=None,

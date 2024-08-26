@@ -1,6 +1,6 @@
 from musculotendon_ocp import (
-    MuscleModelHillFlexibleTendon,
-    MuscleModelHillFlexibleTendonAlwaysPositive,
+    MuscleHillModelFlexibleTendon,
+    MuscleHillModelFlexibleTendonAlwaysPositive,
     ComputeForcePassiveHillType,
     ComputeForceActiveHillType,
     ComputeForceDampingConstant,
@@ -9,7 +9,7 @@ from musculotendon_ocp import (
 from numpy.testing import assert_almost_equal
 
 
-def test_muscle_model_hill_flexible_tendon():
+def test_muscle_hill_model_flexible_tendon():
     name = "Dummy"
     maximal_force = 123
     optimal_length = 0.123
@@ -24,7 +24,7 @@ def test_muscle_model_hill_flexible_tendon():
     compute_force_damping = ComputeForceDampingConstant()
     compute_force_velocity = ComputeForceVelocityHillType()
 
-    model = MuscleModelHillFlexibleTendon(
+    model = MuscleHillModelFlexibleTendon(
         name=name,
         maximal_force=maximal_force,
         optimal_length=optimal_length,
@@ -54,7 +54,7 @@ def test_muscle_model_hill_flexible_tendon():
     assert id(model.compute_force_damping) == id(compute_force_damping)
     assert id(model.compute_force_velocity) == id(compute_force_velocity)
 
-    model_default = MuscleModelHillFlexibleTendon(
+    model_default = MuscleHillModelFlexibleTendon(
         name=name,
         maximal_force=maximal_force,
         optimal_length=optimal_length,
@@ -72,24 +72,24 @@ def test_muscle_model_hill_flexible_tendon():
     assert model_default.compute_force_velocity.__dict__ == ComputeForceVelocityHillType().__dict__
 
 
-def test_muscle_model_hill_flexible_tendon_normalize_tendon_length():
-    model = MuscleModelHillFlexibleTendon(
+def test_muscle_hill_model_flexible_tendon_normalize_tendon_length():
+    model = MuscleHillModelFlexibleTendon(
         name="Dummy", maximal_force=123, optimal_length=0.123, tendon_slack_length=0.123, maximal_velocity=5.0
     )
 
     assert_almost_equal(model.normalize_tendon_length(tendon_length=0.246), 2.0)
 
 
-def test_muscle_model_hill_flexible_tendon_compute_tendon_length():
-    model = MuscleModelHillFlexibleTendon(
+def test_muscle_hill_model_flexible_tendon_compute_tendon_length():
+    model = MuscleHillModelFlexibleTendon(
         name="Dummy", maximal_force=123, optimal_length=0.123, tendon_slack_length=0.123, maximal_velocity=5.0
     )
 
     assert_almost_equal(model.compute_tendon_length(muscle_tendon_length=0.246, muscle_fiber_length=0.123), 0.123)
 
 
-def test_muscle_model_hill_flexible_tendon_compute_tendon_force():
-    model = MuscleModelHillFlexibleTendon(
+def test_muscle_hill_model_flexible_tendon_compute_tendon_force():
+    model = MuscleHillModelFlexibleTendon(
         name="Dummy", maximal_force=123, optimal_length=0.123, tendon_slack_length=0.123, maximal_velocity=5.0
     )
 
@@ -102,8 +102,8 @@ def test_muscle_model_hill_flexible_tendon_compute_tendon_force():
     assert model.compute_tendon_force(0.123 * 2) > 0.0
 
 
-def test_muscle_model_hill_flexible_tendon_always_positive_compute_tendon_force():
-    model = MuscleModelHillFlexibleTendonAlwaysPositive(
+def test_muscle_hill_model_flexible_tendon_always_positive_compute_tendon_force():
+    model = MuscleHillModelFlexibleTendonAlwaysPositive(
         name="Dummy", maximal_force=123, optimal_length=0.123, tendon_slack_length=0.123, maximal_velocity=5.0
     )
 
