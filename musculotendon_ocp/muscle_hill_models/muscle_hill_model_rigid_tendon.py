@@ -82,7 +82,6 @@ class MuscleHillModelRigidTendon(MuscleHillModelAbstract):
 
     @override
     def denormalize_muscle_fiber_length(self, normalized_muscle_fiber_length: MX) -> MX:
-        # TODO TEST THIS
         return normalized_muscle_fiber_length * self.optimal_length
 
     @override
@@ -91,7 +90,6 @@ class MuscleHillModelRigidTendon(MuscleHillModelAbstract):
 
     @override
     def denormalize_muscle_fiber_velocity(self, normalized_muscle_fiber_velocity: MX) -> MX:
-        # TODO TEST THIS
         return normalized_muscle_fiber_velocity * self.maximal_velocity
 
     @override
@@ -100,7 +98,6 @@ class MuscleHillModelRigidTendon(MuscleHillModelAbstract):
 
     @override
     def denormalize_tendon_length(self, normalized_tendon_length: MX) -> MX:
-        # TODO TEST THIS
         raise RuntimeError("The tendon length should not be denormalized with a rigid tendon")
 
     @override
@@ -123,9 +120,8 @@ class MuscleHillModelRigidTendon(MuscleHillModelAbstract):
 
     @override
     def compute_muscle_fiber_velocity_from_inverse(
-        activation: MX, muscle_fiber_length: MX, muscle_fiber_velocity: MX, tendon_length: MX
+        self, activation: MX, muscle_fiber_length: MX, muscle_fiber_velocity: MX, tendon_length: MX
     ) -> MX:
-        # TODO ADD TEST
         raise RuntimeError("The inverse of muscle fiber velocity should not be computed with a rigid tendon")
 
     @override

@@ -64,7 +64,11 @@ def test_muscle_hill_model_rigid_tendon_normalize_muscle_fiber_length():
     )
 
     fiber_length = 0.456
-    assert_almost_equal(model.normalize_muscle_fiber_length(fiber_length), fiber_length / optimal_length)
+    normalized_fiber_length = model.normalize_muscle_fiber_length(fiber_length)
+    assert_almost_equal(normalized_fiber_length, fiber_length / optimal_length)
+
+    denormalized_fiber_length = model.denormalize_muscle_fiber_length(normalized_fiber_length)
+    assert_almost_equal(denormalized_fiber_length, fiber_length)
 
 
 def test_muscle_hill_model_rigid_tendon_normalize_muscle_fiber_velocity():
@@ -78,7 +82,11 @@ def test_muscle_hill_model_rigid_tendon_normalize_muscle_fiber_velocity():
     )
 
     fiber_velocity = 0.789
-    assert_almost_equal(model.normalize_muscle_fiber_velocity(fiber_velocity), fiber_velocity / maximal_velocity)
+    normalized_fiber_velocity = model.normalize_muscle_fiber_velocity(fiber_velocity)
+    assert_almost_equal(normalized_fiber_velocity, fiber_velocity / maximal_velocity)
+
+    denormalized_fiber_velocity = model.denormalize_muscle_fiber_velocity(normalized_fiber_velocity)
+    assert_almost_equal(denormalized_fiber_velocity, fiber_velocity)
 
 
 def test_muscle_hill_model_rigid_tendon_normalize_tendon_length():
@@ -88,6 +96,23 @@ def test_muscle_hill_model_rigid_tendon_normalize_tendon_length():
 
     with pytest.raises(RuntimeError, match="The tendon length should not be normalized with a rigid tendon"):
         model.normalize_tendon_length(tendon_length=0.456)
+
+
+def test_muscle_hill_model_rigid_tendon_compute_muscle_fiber_velocity_from_inverse():
+    model = MuscleHillModelRigidTendon(
+        name="Dummy",
+        maximal_force=123,
+        optimal_length=0.123,
+        tendon_slack_length=0.123,
+        maximal_velocity=5.0,
+    )
+
+    with pytest.raises(
+        RuntimeError, match="The inverse of muscle fiber velocity should not be computed with a rigid tendon"
+    ):
+        model.compute_muscle_fiber_velocity_from_inverse(
+            activation=None, muscle_fiber_length=None, muscle_fiber_velocity=None, tendon_length=None
+        )
 
 
 def test_muscle_hill_model_rigid_tendon_compute_tendon_length():

@@ -8,6 +8,7 @@ from musculotendon_ocp import (
     MuscleHillModelFlexibleTendonAlwaysPositive,
     ComputeMuscleFiberVelocityRigidTendon,
     ComputeMuscleFiberVelocityFlexibleTendonImplicit,
+    ComputeMuscleFiberVelocityFlexibleTendonExplicit,
 )
 import numpy as np
 import pytest
@@ -62,7 +63,7 @@ def test_compute_muscle_fiber_velocity_flexible_tendon_implicit():
     muscle_fiber_velocity = float(
         compute_muscle_fiber_velocity(
             activation=activation,
-            q=np.array([-0.2]),
+            q=q,
             qdot=qdot,
             muscle=mus,
             model_kinematic_updated=model.model.UpdateKinematicsCustom(q),
@@ -91,10 +92,38 @@ def test_compute_muscle_fiber_velocity_flexible_tendon_implicit_wrong_constructo
     ):
         compute_muscle_fiber_velocity(
             activation=activation,
-            q=np.array([-0.2]),
+            q=q,
             qdot=qdot,
             muscle=mus,
             model_kinematic_updated=model.model.UpdateKinematicsCustom(q),
             biorbd_muscle=model.model.muscle(0),
             muscle_fiber_length=np.array([0.1]),
         )
+
+
+def test_compute_muscle_fiber_velocity_flexible_tendon_explicit():
+    mus = MuscleHillModelFlexibleTendonAlwaysPositive(
+        name="Mus1", maximal_force=500, optimal_length=0.1, tendon_slack_length=0.123, maximal_velocity=5.0
+    )
+    model = MuscleBiorbdModel(model_path, muscles=[mus])
+
+    compute_muscle_fiber_velocity = ComputeMuscleFiberVelocityFlexibleTendonExplicit()
+
+    activation = np.array([0.5])
+    q = np.ones(model.nb_q) * -0.2
+    qdot = np.ones(model.nb_qdot)
+
+    muscle_fiber_velocity = model.function_to_dm(
+        partial(
+            compute_muscle_fiber_velocity,
+            muscle=mus,
+            model_kinematic_updated=model.model.UpdateKinematicsCustom(q),
+            biorbd_muscle=model.model.muscle(0),
+            activation=activation,
+            muscle_fiber_length=np.array([0.1]),
+        ),
+        q=q,
+        qdot=qdot,
+    )
+
+    np.testing.assert_almost_equal(muscle_fiber_velocity, -5.201202604749881)

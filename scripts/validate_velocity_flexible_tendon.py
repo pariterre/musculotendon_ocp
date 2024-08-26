@@ -55,12 +55,10 @@ def compute_muscle_fiber_velocities(
     return lmdot
 
 
-# TODO ipuch should we use this
 last_computed_lmdot = [np.array([0])]
 
 
 def dynamics(_, x, dynamics_functions: list[Callable], model: MuscleBiorbdModel, activations: np.ndarray) -> np.ndarray:
-    # TODO Find a way to initialize muscle_velocities?
     muscle_fiber_lmdot_func, forward_dynamics_func = dynamics_functions
 
     fiber_lengths = x[: model.nb_muscles]
@@ -72,7 +70,7 @@ def dynamics(_, x, dynamics_functions: list[Callable], model: MuscleBiorbdModel,
         q=q,
         qdot=qdot,
         muscle_fiber_lengths=fiber_lengths,
-        # muscle_fiber_velocities=last_computed_velocity[-1],
+        muscle_fiber_velocities=last_computed_lmdot[-1],
     )["output"].__array__()[:, 0]
     last_computed_lmdot.append(fiber_lengths_dot)
 
@@ -109,7 +107,7 @@ def main(use_implicit_velocity_computation: bool = False):
                 maximal_force=1000,
                 optimal_length=0.1,
                 tendon_slack_length=0.16,
-                compute_force_damping=ComputeForceDampingLinear(factor=0.0),
+                compute_force_damping=ComputeForceDampingLinear(factor=0.1),
                 maximal_velocity=5.0,
                 compute_muscle_fiber_length=ComputeMuscleFiberLengthAsVariable(),
                 compute_muscle_fiber_velocity=(

@@ -134,7 +134,6 @@ class ComputeMuscleFiberVelocityFlexibleTendonExplicit(ComputeMuscleFiberVelocit
         qdot: MX,
         muscle_fiber_length: MX,
     ) -> biorbd.MX:
-        # TODO ADD TEST
         if isinstance(muscle.compute_muscle_fiber_length, ComputeMuscleFiberLengthRigidTendon):
             raise ValueError("The compute_muscle_fiber_length must not be a ComputeMuscleFiberLengthRigidTendon")
 
@@ -166,11 +165,10 @@ class ComputeMuscleFiberVelocityFlexibleTendonExplicit(ComputeMuscleFiberVelocit
                 [
                     activation_mx,
                     muscle_fiber_length_mx,
-                    muscle_fiber_velocity_mx,
                     q if isinstance(q, MX) else MX.sym("dummy_q"),
                 ],
                 [muscle_velocity],
-            )(activation, muscle_fiber_length_mx, muscle_fiber_velocity_mx, q)
+            )(activation, muscle_fiber_length_mx, q)
 
         # The muscle_fiber_length is found when it equates the muscle and tendon forces
         equality_constraint = Function(

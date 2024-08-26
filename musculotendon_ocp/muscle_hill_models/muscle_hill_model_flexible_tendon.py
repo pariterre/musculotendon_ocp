@@ -62,7 +62,6 @@ class MuscleHillModelFlexibleTendon(MuscleHillModelRigidTendon):
         muscle_fiber_velocity: MX,
         tendon_length: MX,
     ) -> MX:
-        # TODO ADD TEST
         # Get the normalized muscle length and velocity
         normalized_length = self.normalize_muscle_fiber_length(muscle_fiber_length)
         normalized_velocity = self.normalize_muscle_fiber_velocity(muscle_fiber_velocity)
@@ -86,6 +85,10 @@ class MuscleHillModelFlexibleTendon(MuscleHillModelRigidTendon):
     @override
     def normalize_tendon_length(self, tendon_length: MX) -> MX:
         return tendon_length / self.tendon_slack_length
+
+    @override
+    def denormalize_tendon_length(self, normalized_tendon_length: MX) -> MX:
+        return normalized_tendon_length * self.tendon_slack_length
 
     @override
     def compute_tendon_length(self, muscle_tendon_length: MX, muscle_fiber_length: MX) -> MX:
