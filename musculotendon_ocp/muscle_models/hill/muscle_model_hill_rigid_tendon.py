@@ -2,7 +2,7 @@ from typing import Callable, override
 
 from casadi import MX
 
-from .pennation_angle import PennationAngleConstant
+from .compute_pennation_angle import ComputePennationAngleConstant
 from .force_active import ForceActiveHillType
 from .force_damping import ForceDampingConstant
 from .force_passive import ForcePassiveHillType
@@ -26,7 +26,7 @@ Returns
 MX
     The pennation angle corresponding to the given muscle length
 """
-type PennationAngleCallable = Callable[[MX, MX], MX]
+type ComputePennationAngleCallable = Callable[[MX], MX]
 
 """
 Returns the normalized force from the passive force-length relationship
@@ -34,7 +34,7 @@ Returns the normalized force from the passive force-length relationship
 Parameters
 ----------
 normalized_muscle_length: MX
-    The normalized muscle length
+    The normalized muscle length that impacts the pennation angle
 
 Returns
 -------
@@ -101,11 +101,11 @@ class MuscleModelHillRigidTendon(MuscleModelAbstract):
         optimal_length: MX,
         tendon_slack_length: MX,
         maximal_velocity: MX,
-        pennation_angle: PennationAngleCallable | None = None,
         force_passive: ForcePassiveCallable | None = None,
         force_active: ForceActiveCallable | None = None,
         force_velocity: ForceVelocityCallable | None = None,
         force_damping: ForceDampingCallable | None = None,
+        compute_pennation_angle: ComputePennationAngleCallable | None = None,
         compute_muscle_fiber_length: ComputeMuscleFiberLengthCallable | None = None,
         compute_muscle_fiber_velocity: ComputeMuscleFiberLengthCallable | None = None,
     ):
@@ -133,7 +133,9 @@ class MuscleModelHillRigidTendon(MuscleModelAbstract):
         force_damping: ForceDampingCallable
             The damping function
         """
-        pennation_angle = PennationAngleConstant() if pennation_angle is None else pennation_angle
+        compute_pennation_angle = (
+            ComputePennationAngleConstant() if compute_pennation_angle is None else compute_pennation_angle
+        )
         force_passive = ForcePassiveHillType() if force_passive is None else force_passive
         force_active = ForceActiveHillType() if force_active is None else force_active
         force_velocity = ForceVelocityHillType() if force_velocity is None else force_velocity
@@ -159,7 +161,7 @@ class MuscleModelHillRigidTendon(MuscleModelAbstract):
             compute_muscle_fiber_velocity=compute_muscle_fiber_velocity,
         )
 
-        self.pennation_angle = pennation_angle
+        self.compute_pennation_angle = compute_pennation_angle
 
         self._force_passive = force_passive
         self._force_active = force_active
@@ -190,9 +192,10 @@ class MuscleModelHillRigidTendon(MuscleModelAbstract):
         force_velocity = self._force_velocity(normalized_velocity)
         force_damping = self._force_damping(normalized_velocity)
 
-        return self.pennation_angle(
-            muscle_fiber_length,
-            self.maximal_force * (force_passive + activation * force_active * force_velocity + force_damping),
+        return (
+            self.compute_pennation_angle(muscle_fiber_length)
+            * self.maximal_force
+            * (force_passive + activation * force_active * force_velocity + force_damping)
         )
 
     @override

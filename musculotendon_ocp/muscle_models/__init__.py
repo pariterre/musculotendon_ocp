@@ -7,7 +7,7 @@ from .compute_muscle_fiber_length import (
 from .compute_muscle_fiber_velocity import (
     ComputeMuscleFiberVelocityAsVariable,
     ComputeMuscleFiberVelocityRigidTendon,
-    ComputeMuscleFiberVelocityFlexibleTendon,
+    ComputeMuscleFiberVelocityFlexibleTendonImplicit,
 )
 
 __all__ = hill.__all__ + [
@@ -16,5 +16,5 @@ __all__ = hill.__all__ + [
     ComputeMuscleFiberLengthInstantaneousEquilibrium.__name__,
     ComputeMuscleFiberVelocityAsVariable.__name__,
     ComputeMuscleFiberVelocityRigidTendon.__name__,
-    ComputeMuscleFiberVelocityFlexibleTendon.__name__,
+    ComputeMuscleFiberVelocityFlexibleTendonImplicit.__name__,
 ]

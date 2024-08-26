@@ -7,7 +7,7 @@ from musculotendon_ocp import (
     MuscleModelHillRigidTendon,
     MuscleModelHillFlexibleTendonAlwaysPositive,
     ComputeMuscleFiberVelocityRigidTendon,
-    ComputeMuscleFiberVelocityFlexibleTendon,
+    ComputeMuscleFiberVelocityFlexibleTendonImplicit,
 )
 import numpy as np
 import pytest
@@ -47,13 +47,13 @@ def test_compute_muscle_fiber_velocity_rigid_tendon():
     np.testing.assert_almost_equal(muscle_fiber_velocity, -0.5)
 
 
-def test_compute_muscle_fiber_velocity_flexible_tendon():
+def test_compute_muscle_fiber_velocity_flexible_tendon_implicit():
     mus = MuscleModelHillFlexibleTendonAlwaysPositive(
         name="Mus1", maximal_force=500, optimal_length=0.1, tendon_slack_length=0.123, maximal_velocity=5.0
     )
     model = MuscleBiorbdModel(model_path, muscles=[mus])
 
-    compute_muscle_fiber_velocity = ComputeMuscleFiberVelocityFlexibleTendon()
+    compute_muscle_fiber_velocity = ComputeMuscleFiberVelocityFlexibleTendonImplicit()
 
     activation = np.array([0.5])
     q = np.ones(model.nb_q) * -0.2
@@ -73,14 +73,14 @@ def test_compute_muscle_fiber_velocity_flexible_tendon():
     np.testing.assert_almost_equal(muscle_fiber_velocity, -5.201202604749881)
 
 
-def test_compute_muscle_fiber_velocity_flexible_tendon_wrong_constructor():
+def test_compute_muscle_fiber_velocity_flexible_tendon_implicit_wrong_constructor():
     mus = MuscleModelHillRigidTendon(
         name="Mus1", maximal_force=500, optimal_length=0.1, tendon_slack_length=0.123, maximal_velocity=5.0
     )
     model = MuscleBiorbdModel(model_path, muscles=[mus])
 
     mx_symbolic = MX.sym("muscle_fiber_length", 1, 1)
-    compute_muscle_fiber_velocity = ComputeMuscleFiberVelocityFlexibleTendon(mx_symbolic=mx_symbolic)
+    compute_muscle_fiber_velocity = ComputeMuscleFiberVelocityFlexibleTendonImplicit(mx_symbolic=mx_symbolic)
 
     activation = np.array([0.5])
     q = np.ones(model.nb_q) * -0.2

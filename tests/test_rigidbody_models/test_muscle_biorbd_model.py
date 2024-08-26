@@ -7,7 +7,7 @@ from musculotendon_ocp import (
     MuscleModelHillRigidTendon,
     MuscleModelHillFlexibleTendonAlwaysPositive,
     ComputeMuscleFiberLengthAsVariable,
-    ComputeMuscleFiberVelocityFlexibleTendon,
+    ComputeMuscleFiberVelocityFlexibleTendonImplicit,
 )
 import numpy as np
 import pytest
@@ -84,7 +84,7 @@ def test_muscle_biorbd_model_get_mx_variables():
             MuscleModelHillFlexibleTendonAlwaysPositive(
                 name="Mus1",
                 compute_muscle_fiber_length=ComputeMuscleFiberLengthAsVariable(mx_symbolic=muscle_fiber_length_mx),
-                compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityFlexibleTendon(
+                compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityFlexibleTendonImplicit(
                     mx_symbolic=muscle_fiber_velocity_mx
                 ),
                 **dummy_params

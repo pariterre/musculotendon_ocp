@@ -7,7 +7,7 @@ from musculotendon_ocp import (
     MuscleBiorbdModel,
     MuscleModelHillFlexibleTendon,
     ComputeMuscleFiberLengthAsVariable,
-    ComputeMuscleFiberVelocityFlexibleTendon,
+    ComputeMuscleFiberVelocityFlexibleTendonImplicit,
     ForceDampingLinear,
 )
 import numpy as np
@@ -111,7 +111,7 @@ def main():
                 force_damping=ForceDampingLinear(factor=0.1),
                 maximal_velocity=5.0,
                 compute_muscle_fiber_length=ComputeMuscleFiberLengthAsVariable(),
-                compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityFlexibleTendon(),
+                compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityFlexibleTendonImplicit(),
             ),
         ],
     )

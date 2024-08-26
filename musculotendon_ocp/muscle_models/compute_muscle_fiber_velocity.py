@@ -58,7 +58,7 @@ class ComputeMuscleFiberVelocityRigidTendon(ComputeMuscleFiberVelocityAsVariable
         return mus_jacobian @ qdot
 
 
-class ComputeMuscleFiberVelocityFlexibleTendon(ComputeMuscleFiberVelocityAsVariable):
+class ComputeMuscleFiberVelocityFlexibleTendonImplicit(ComputeMuscleFiberVelocityAsVariable):
     """
     Compute the muscle fiber velocity by inverting the force-velocity relationship.
     """
