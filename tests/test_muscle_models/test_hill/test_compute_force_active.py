@@ -1,10 +1,10 @@
-from musculotendon_ocp import ForceActiveHillType
+from musculotendon_ocp import ComputeForceActiveHillType
 from numpy.testing import assert_almost_equal
 
 
-def test_force_active_hill_type():
+def test_compute_force_active_hill_type():
 
-    force_active_model = ForceActiveHillType()
+    force_active_model = ComputeForceActiveHillType()
 
     assert force_active_model.b11 == 0.814483478343008
     assert force_active_model.b21 == 1.055033428970575

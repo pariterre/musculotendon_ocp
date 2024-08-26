@@ -8,7 +8,7 @@ from musculotendon_ocp import (
     MuscleModelHillFlexibleTendon,
     ComputeMuscleFiberLengthAsVariable,
     ComputeMuscleFiberVelocityFlexibleTendonImplicit,
-    ForceDampingLinear,
+    ComputeForceDampingLinear,
 )
 import numpy as np
 from scipy.integrate import solve_ivp
@@ -108,7 +108,7 @@ def main():
                 maximal_force=1000,
                 optimal_length=0.1,
                 tendon_slack_length=0.16,
-                force_damping=ForceDampingLinear(factor=0.1),
+                compute_force_damping=ComputeForceDampingLinear(factor=0.1),
                 maximal_velocity=5.0,
                 compute_muscle_fiber_length=ComputeMuscleFiberLengthAsVariable(),
                 compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityFlexibleTendonImplicit(),

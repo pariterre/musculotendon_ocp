@@ -1,7 +1,7 @@
 from casadi import MX, exp
 
 
-class ForceDampingConstant:
+class ComputeForceDampingConstant:
     def __init__(self, factor: float = 0.0):
         self._factor = factor
 
@@ -22,7 +22,7 @@ class ForceDampingConstant:
         return self._factor
 
 
-class ForceDampingLinear:
+class ComputeForceDampingLinear:
     def __init__(self, factor: float = 0.1):
         self._factor = factor
 

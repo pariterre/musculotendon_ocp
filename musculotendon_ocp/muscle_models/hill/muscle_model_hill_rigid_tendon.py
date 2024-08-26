@@ -1,96 +1,90 @@
-from typing import Callable, override
+from typing import override, Protocol
 
 from casadi import MX
 
-from .compute_pennation_angle import ComputePennationAngleConstant
-from .force_active import ForceActiveHillType
-from .force_damping import ForceDampingConstant
-from .force_passive import ForcePassiveHillType
-from .force_velocity import ForceVelocityHillType
-from ..muscle_model_abstract import MuscleModelAbstract, ComputeMuscleFiberLengthCallable
+from ..compute_pennation_angle import ComputePennationAngleConstant
+from .compute_force_active import ComputeForceActiveHillType
+from .compute_force_damping import ComputeForceDampingConstant
+from .compute_force_passive import ComputeForcePassiveHillType
+from .compute_force_velocity import ComputeForceVelocityHillType
+from ..muscle_model_abstract import (
+    MuscleModelAbstract,
+    ComputeMuscleFiberLength,
+    ComputeMuscleFiberVelocity,
+    ComputePennationAngle,
+)
 from ..compute_muscle_fiber_length import ComputeMuscleFiberLengthRigidTendon
 from ..compute_muscle_fiber_velocity import ComputeMuscleFiberVelocityRigidTendon
 
-"""
-Compute the pennation angle
 
-Parameters
-----------
-muscle_length: MX
-    The muscle length
-element: MX
-    The element to apply the pennation angle to
+class ComputeForcePassive(Protocol):
+    def __call__(self, normalized_muscle_length: MX) -> MX:
+        """
+        Compute the normalized force from the passive force-length relationship
 
-Returns
--------
-MX
-    The pennation angle corresponding to the given muscle length
-"""
-type ComputePennationAngleCallable = Callable[[MX], MX]
+        Parameters
+        ----------
+        normalized_muscle_length: MX
+            The normalized muscle length that impacts the pennation angle
 
-"""
-Returns the normalized force from the passive force-length relationship
-
-Parameters
-----------
-normalized_muscle_length: MX
-    The normalized muscle length that impacts the pennation angle
-
-Returns
--------
-MX
-    The normalized passive force corresponding to the given muscle length
-"""
-type ForcePassiveCallable = Callable[[MX], MX]
-
-"""
-Compute the normalized force from the active force-length relationship
-
-Parameters
-----------
-normalized_muscle_length: MX
-    The normalized muscle length
-
-Returns
--------
-MX
-    The normalized active force corresponding to the given muscle length
-"""
-type ForceActiveCallable = Callable[[MX], MX]
+        Returns
+        -------
+        MX
+            The normalized passive force corresponding to the given muscle length
+        """
 
 
-"""
-Compute the normalized force from the force-velocity relationship
+class ComputeForceActive(Protocol):
+    def __call__(self, normalized_muscle_length: MX) -> MX:
+        """
+        Compute the normalized force from the active force-length relationship
 
-Parameters
-----------
-normalized_muscle_fiber_length: MX
-    The normalized muscle length
-normalized_muscle_fiber_velocity: MX
-    The normalized muscle velocity
+        Parameters
+        ----------
+        normalized_muscle_length: MX
+            The normalized muscle length
 
-Returns
--------
-MX
-    The normalized force corresponding to the given muscle length and velocity
-"""
-type ForceVelocityCallable = Callable[[MX, MX], MX]
+        Returns
+        -------
+        MX
+            The normalized active force corresponding to the given muscle length
+        """
 
 
-"""
-Compute the normalized force from the damping
+class ComputeForceVelocity(Protocol):
+    def __call__(self, normalized_muscle_fiber_length: MX, normalized_muscle_fiber_velocity: MX) -> MX:
+        """
+        Compute the normalized force from the force-velocity relationship
 
-Parameters
-----------
-normalized_muscle_fiber_velocity: MX
-    The normalized muscle velocity
+        Parameters
+        ----------
+        normalized_muscle_fiber_length: MX
+            The normalized muscle length
+        normalized_muscle_fiber_velocity: MX
+            The normalized muscle velocity
 
-Returns
--------
-MX
-    The normalized force corresponding to the given muscle velocity
-"""
-type ForceDampingCallable = Callable[[MX], MX]
+        Returns
+        -------
+        MX
+            The normalized force corresponding to the given muscle length and velocity
+        """
+
+
+class ComputeForceDamping:
+    def __call__(self, normalized_muscle_fiber_velocity: MX) -> MX:
+        """
+        Compute the normalized force from the damping
+
+        Parameters
+        ----------
+        normalized_muscle_fiber_velocity: MX
+            The normalized muscle velocity
+
+        Returns
+        -------
+        MX
+            The normalized force corresponding to the given muscle velocity
+        """
 
 
 class MuscleModelHillRigidTendon(MuscleModelAbstract):
@@ -101,13 +95,13 @@ class MuscleModelHillRigidTendon(MuscleModelAbstract):
         optimal_length: MX,
         tendon_slack_length: MX,
         maximal_velocity: MX,
-        force_passive: ForcePassiveCallable | None = None,
-        force_active: ForceActiveCallable | None = None,
-        force_velocity: ForceVelocityCallable | None = None,
-        force_damping: ForceDampingCallable | None = None,
-        compute_pennation_angle: ComputePennationAngleCallable | None = None,
-        compute_muscle_fiber_length: ComputeMuscleFiberLengthCallable | None = None,
-        compute_muscle_fiber_velocity: ComputeMuscleFiberLengthCallable | None = None,
+        compute_force_passive: ComputeForcePassive | None = None,
+        compute_force_active: ComputeForceActive | None = None,
+        compute_force_velocity: ComputeForceVelocity | None = None,
+        compute_force_damping: ComputeForceDamping | None = None,
+        compute_pennation_angle: ComputePennationAngle | None = None,
+        compute_muscle_fiber_length: ComputeMuscleFiberLength | None = None,
+        compute_muscle_fiber_velocity: ComputeMuscleFiberVelocity | None = None,
     ):
         """
         Parameters
@@ -122,24 +116,30 @@ class MuscleModelHillRigidTendon(MuscleModelAbstract):
             The tendon slack length
         maximal_velocity: MX
             The maximal velocity of the muscle
-        pennation_angle: PennationAngleCallable
+        pennation_angle: ComputePennationAngle
             The pennation angle function
-        force_passive: ForcePassiveCallable
+        compute_force_passive: ComputeForcePassive
             The passive force-length relationship function
-        force_active: ForceActiveCallable
+        compute_force_active: ComputeForceActive
             The active force-length relationship function
-        force_velocity: ForceVelocityCallable
+        compute_force_velocity: ComputeForceVelocity
             The force-velocity relationship function
-        force_damping: ForceDampingCallable
+        compute_force_damping: ComputeForceDamping
             The damping function
         """
         compute_pennation_angle = (
             ComputePennationAngleConstant() if compute_pennation_angle is None else compute_pennation_angle
         )
-        force_passive = ForcePassiveHillType() if force_passive is None else force_passive
-        force_active = ForceActiveHillType() if force_active is None else force_active
-        force_velocity = ForceVelocityHillType() if force_velocity is None else force_velocity
-        force_damping = ForceDampingConstant() if force_damping is None else force_damping
+        compute_force_passive = (
+            ComputeForcePassiveHillType() if compute_force_passive is None else compute_force_passive
+        )
+        compute_force_active = ComputeForceActiveHillType() if compute_force_active is None else compute_force_active
+        compute_force_velocity = (
+            ComputeForceVelocityHillType() if compute_force_velocity is None else compute_force_velocity
+        )
+        compute_force_damping = (
+            ComputeForceDampingConstant() if compute_force_damping is None else compute_force_damping
+        )
         compute_muscle_fiber_length = (
             ComputeMuscleFiberLengthRigidTendon()
             if compute_muscle_fiber_length is None
@@ -157,16 +157,15 @@ class MuscleModelHillRigidTendon(MuscleModelAbstract):
             optimal_length=optimal_length,
             tendon_slack_length=tendon_slack_length,
             maximal_velocity=maximal_velocity,
+            compute_pennation_angle=compute_pennation_angle,
             compute_muscle_fiber_length=compute_muscle_fiber_length,
             compute_muscle_fiber_velocity=compute_muscle_fiber_velocity,
         )
 
-        self.compute_pennation_angle = compute_pennation_angle
-
-        self._force_passive = force_passive
-        self._force_active = force_active
-        self._force_velocity = force_velocity
-        self._force_damping = force_damping
+        self.compute_force_passive = compute_force_passive
+        self.compute_force_active = compute_force_active
+        self.compute_force_velocity = compute_force_velocity
+        self.compute_force_damping = compute_force_damping
 
     @override
     def normalize_muscle_fiber_length(self, muscle_fiber_length: MX) -> MX:
@@ -187,16 +186,21 @@ class MuscleModelHillRigidTendon(MuscleModelAbstract):
         normalized_velocity = self.normalize_muscle_fiber_velocity(muscle_fiber_velocity)
 
         # Compute the passive, active, velocity and damping factors
-        force_passive = self._force_passive(normalized_length)
-        force_active = self._force_active(normalized_length)
-        force_velocity = self._force_velocity(normalized_velocity)
-        force_damping = self._force_damping(normalized_velocity)
+        pennation_angle = self.compute_pennation_angle(muscle_fiber_length)
+        force_passive = self.compute_force_passive(normalized_length)
+        force_active = self.compute_force_active(normalized_length)
+        force_velocity = self.compute_force_velocity(normalized_velocity)
+        force_damping = self.compute_force_damping(normalized_velocity)
 
         return (
-            self.compute_pennation_angle(muscle_fiber_length)
+            pennation_angle
             * self.maximal_force
             * (force_passive + activation * force_active * force_velocity + force_damping)
         )
+
+    @override
+    def compute_muscle_force_velocity_inverse(self, activation: MX, muscle_fiber_length: MX, tendon_length: MX) -> MX:
+        raise NotImplementedError("The force-velocity relationship is not invertible with a rigid tendon")
 
     @override
     def compute_tendon_length(self, muscle_tendon_length: MX, muscle_fiber_length: MX) -> MX:

@@ -24,6 +24,11 @@ class DummyMuscleModelAbstract(MuscleModelAbstract):
         pass
 
     @override
+    def compute_muscle_force_velocity_inverse(self, activation: MX, muscle_fiber_length: MX, tendon_length: MX) -> MX:
+        # TODO Update the signature of this method
+        pass
+
+    @override
     def compute_tendon_length(self, muscle_tendon_length: MX, muscle_fiber_length: MX) -> MX:
         pass
 
@@ -40,6 +45,7 @@ def test_muscle_model_hill_rigid_tendon_checking_inputs():
             optimal_length=0.123,
             tendon_slack_length=0.123,
             maximal_velocity=0.123,
+            compute_pennation_angle=None,
             compute_muscle_fiber_length=None,
             compute_muscle_fiber_velocity=None,
         )
@@ -51,6 +57,7 @@ def test_muscle_model_hill_rigid_tendon_checking_inputs():
             optimal_length=-0.123,
             tendon_slack_length=0.123,
             maximal_velocity=0.123,
+            compute_pennation_angle=None,
             compute_muscle_fiber_length=None,
             compute_muscle_fiber_velocity=None,
         )
@@ -62,6 +69,7 @@ def test_muscle_model_hill_rigid_tendon_checking_inputs():
             optimal_length=0.123,
             tendon_slack_length=-0.123,
             maximal_velocity=0.123,
+            compute_pennation_angle=None,
             compute_muscle_fiber_length=None,
             compute_muscle_fiber_velocity=None,
         )
@@ -73,6 +81,7 @@ def test_muscle_model_hill_rigid_tendon_checking_inputs():
             optimal_length=0.123,
             tendon_slack_length=0.123,
             maximal_velocity=-0.123,
+            compute_pennation_angle=None,
             compute_muscle_fiber_length=None,
             compute_muscle_fiber_velocity=None,
         )
@@ -85,6 +94,7 @@ def test_get_mx_variables():
         optimal_length=0.123,
         tendon_slack_length=0.123,
         maximal_velocity=0.123,
+        compute_pennation_angle=None,
         compute_muscle_fiber_length=None,
         compute_muscle_fiber_velocity=None,
     )
@@ -110,6 +120,7 @@ def test_muscle_model_abstract_casadi_function_interface():
         optimal_length=0.123,
         tendon_slack_length=0.123,
         maximal_velocity=0.123,
+        compute_pennation_angle=None,
         compute_muscle_fiber_length=None,
         compute_muscle_fiber_velocity=None,
     )

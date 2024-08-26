@@ -1,7 +1,7 @@
 from functools import cached_property
 
 import biorbd_casadi as biorbd
-from casadi import MX, Function, rootfinder
+from casadi import MX, Function, rootfinder, cos
 
 from .muscle_model_abstract import MuscleModelAbstract
 from .compute_muscle_fiber_length import ComputeMuscleFiberLengthRigidTendon
@@ -107,12 +107,65 @@ class ComputeMuscleFiberVelocityFlexibleTendonImplicit(ComputeMuscleFiberVelocit
             [force_muscle - force_tendon],
         )
 
-        # TODO CHECK IF WE CAN USE THIS EXPLICIT FORMULA INSTEAD OF THE IMPLICIT ONE
-        # NOTE: IF NO DAMPING THIS CAN RETURN IMMEDIATELY, OTHERWISE WE NEED TO USE THE ROOTFINDER
-        # return muscle._vmax  * muscle._force_velocity_inverse(
-        #     (force_tendon / cos(muscle.pennation) - muscle._passive_force - muscle._force_damping)
-        #     / (activation * muscle._force_active)
-        # )
+        # Reminder: the first variable of the function is the unknown value that rootfinder tries to optimize.
+        # The others are parameters. To have more unknown values to calculate, one needs to use the vertcat function.
+        newton_method = rootfinder(
+            "newton_method",
+            "newton",
+            equality_constraint,
+            {"error_on_fail": True, "enable_fd": False, "print_in": False, "print_out": False, "max_num_dir": 10},
+        )
+
+        return newton_method(i0=0, i1=muscle_fiber_length, i2=activation, i3=q)["o0"]
+
+
+class ComputeMuscleFiberVelocityFlexibleTendonExplicit(ComputeMuscleFiberVelocityAsVariable):
+    """
+    Compute the muscle fiber velocity by inverting the force-velocity relationship.
+    """
+
+    def __call__(
+        self,
+        muscle: MuscleModelAbstract,
+        model_kinematic_updated: biorbd.Model,
+        biorbd_muscle: biorbd.Muscle,
+        activation: MX,
+        q: MX,
+        qdot: MX,
+        muscle_fiber_length: MX,
+    ) -> biorbd.MX:
+        if isinstance(muscle.compute_muscle_fiber_length, ComputeMuscleFiberLengthRigidTendon):
+            raise ValueError("The compute_muscle_fiber_length must not be a ComputeMuscleFiberLengthRigidTendon")
+
+        # Alias for the MX variables
+        activation_mx = MX.sym("activation", 1, 1)
+        muscle_fiber_velocity_mx = self.mx_variable
+        muscle_fiber_length_mx = muscle.compute_muscle_fiber_length.mx_variable
+
+        # Compute necessary variables
+        biorbd_muscle.updateOrientations(model_kinematic_updated, q)
+        tendon_length = muscle.compute_tendon_length(
+            biorbd_muscle.musculoTendonLength(model_kinematic_updated, q).to_mx(), muscle_fiber_length
+        )
+
+        # Compute the muscle and tendon forces
+        muscle_velocity = muscle.compute_muscle_force_velocity_inverse(
+            activation=activation_mx, muscle_fiber_length=muscle_fiber_length, tendon_length=tendon_length
+        )
+
+        return muscle_velocity
+
+        # The muscle_fiber_length is found when it equates the muscle and tendon forces
+        equality_constraint = Function(
+            "g",
+            [
+                muscle_fiber_velocity_mx,
+                muscle_fiber_length_mx,
+                activation_mx,
+                q if isinstance(q, MX) else MX.sym("dummy_q"),
+            ],
+            [force_muscle - force_tendon],
+        )
 
         # Reminder: the first variable of the function is the unknown value that rootfinder tries to optimize.
         # The others are parameters. To have more unknown values to calculate, one needs to use the vertcat function.

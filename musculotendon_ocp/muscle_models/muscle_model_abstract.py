@@ -1,66 +1,128 @@
 from abc import ABC, abstractmethod
 from functools import cached_property
-from typing import Any, Callable, Iterable
+from typing import Any, Callable, Iterable, Protocol
 
 import biorbd_casadi as biorbd
 from casadi import MX, Function, DM
 
 
-"""
-Compute the muscle length
+class ComputePennationAngle(Protocol):
+    def __call__(self, muscle_fiber_length: MX) -> MX:
+        """
+        Compute the pennation angle
 
-Parameters
-----------
-muscle: MuscleModelAbstract
-    The muscle model
-model_kinematic_updated: biorbd.Model
-    The updated biorbd model up to q
-biorbd_muscle: biorbd.Muscle
-    The biorbd muscle associated with the muscle model
-activation: MX
-    The muscle activation
-q: MX
-    The generalized coordinates
-qdot: MX
+        Parameters
+        ----------
+        muscle_fiber_length: MX
+            The muscle length
 
-Returns
--------
-MX
-    The muscle length
-"""
-type ComputeMuscleFiberLengthCallable = Callable[[MuscleModelAbstract, biorbd.Model, biorbd.Muscle, MX, MX, MX], MX]
+        Returns
+        -------
+        MX
+            The pennation angle corresponding to the given muscle length
+        """
 
 
-"""
-Compute the muscle velocity
+class ComputeMuscleFiberLength(Protocol):
+    def __call__(
+        self,
+        muscle: "MuscleModelAbstract",
+        model_kinematic_updated: biorbd.Model,
+        biorbd_muscle: biorbd.Muscle,
+        activation: MX,
+        q: MX,
+        qdot: MX,
+    ) -> MX:
+        """
+        Compute the muscle length
 
-Parameters
-----------
-muscle: MuscleModelAbstract
-    The muscle model
-model_kinematic_updated: biorbd.Model
-    The updated biorbd model up to q
-biorbd_muscle: biorbd.Muscle
-    The biorbd muscle associated with the muscle model
-activation: MX
-    The muscle activation
-q: MX
-    The generalized coordinates
-qdot: MX
-    The generalized velocities
-muscle_fiber_length: MX
-    The muscle fiber length
-tendon_length: MX
-    The tendon length
+        Parameters
+        ----------
+        muscle: MuscleModelAbstract
+            The muscle model
+        model_kinematic_updated: biorbd.Model
+            The updated biorbd model up to q
+        biorbd_muscle: biorbd.Muscle
+            The biorbd muscle associated with the muscle model
+        activation: MX
+            The muscle activation
+        q: MX
+            The generalized coordinates
+        qdot: MX
 
-Returns
--------
-MX
-    The muscle length
-"""
-type ComputeMuscleFiberVelocityCallable = Callable[
-    [MuscleModelAbstract, biorbd.Model, biorbd.Muscle, MX, MX, MX, MX, MX], MX
-]
+        Returns
+        -------
+        MX
+            The muscle length
+        """
+
+
+class ComputeMuscleFiberVelocity(Protocol):
+    def __call__(
+        self,
+        muscle: "MuscleModelAbstract",
+        model_kinematic_updated: biorbd.Model,
+        biorbd_muscle: biorbd.Muscle,
+        activation: MX,
+        q: MX,
+        qdot: MX,
+        muscle_fiber_length: MX,
+        tendon_length: MX,
+    ) -> MX:
+        """
+        Compute the muscle velocity
+
+        Parameters
+        ----------
+        muscle: MuscleModelAbstract
+            The muscle model
+        model_kinematic_updated: biorbd.Model
+            The updated biorbd model up to q
+        biorbd_muscle: biorbd.Muscle
+            The biorbd muscle associated with the muscle model
+        activation: MX
+            The muscle activation
+        q: MX
+            The generalized coordinates
+        qdot: MX
+            The generalized velocities
+        muscle_fiber_length: MX
+            The muscle fiber length
+        tendon_length: MX
+            The tendon length
+
+        Returns
+        -------
+        MX
+            The muscle length
+        """
+
+    def inverse(
+        activation: MX, pennation_angle: MX, force_passive: MX, force_active: MX, force_damping: MX, tendon_force: MX
+    ) -> MX:
+        """
+        Compute the inverse of the force-velocity relationship
+
+        Parameters
+        ----------
+        activation: MX
+            The muscle activation
+        pennation_angle: MX
+            The computed pennation angle
+        force_passive: MX
+            The computed passive force
+        force_active: MX
+            The computed active force
+        force_damping: MX
+            The computed damping force
+        tendon_force: MX
+            The computed tendon force
+
+        Returns
+        -------
+        MX
+            The inverse of the force-velocity relationship
+        """
 
 
 class MuscleModelAbstract(ABC):
@@ -71,8 +133,9 @@ class MuscleModelAbstract(ABC):
         optimal_length: MX,
         tendon_slack_length: MX,
         maximal_velocity: MX,
-        compute_muscle_fiber_length: ComputeMuscleFiberLengthCallable,
-        compute_muscle_fiber_velocity: ComputeMuscleFiberVelocityCallable,
+        compute_pennation_angle: ComputePennationAngle,
+        compute_muscle_fiber_length: ComputeMuscleFiberLength,
+        compute_muscle_fiber_velocity: ComputeMuscleFiberVelocity,
     ):
         self._name = name
 
@@ -92,6 +155,7 @@ class MuscleModelAbstract(ABC):
             raise ValueError("The maximal velocity must be positive")
         self.maximal_velocity = maximal_velocity
 
+        self.compute_pennation_angle = compute_pennation_angle
         self.compute_muscle_fiber_length = compute_muscle_fiber_length
         self.compute_muscle_fiber_velocity = compute_muscle_fiber_velocity
 
@@ -196,6 +260,27 @@ class MuscleModelAbstract(ABC):
         -------
         MX
             The muscle force corresponding to the given muscle activation, length and velocity
+        """
+
+    @abstractmethod
+    def compute_muscle_force_velocity_inverse(self, activation: MX, muscle_fiber_length: MX, tendon_length: MX) -> MX:
+        """
+        Compute the inverse of the muscle force-velocity relationship
+
+        Parameters
+        ----------
+        activation: MX
+            The muscle activation
+        muscle_fiber_length: MX
+            The length of the muscle fibers
+        tendon_length: MX
+            The length of the tendon
+
+        Returns
+        -------
+        MX
+            The inverse of the muscle force-velocity relationship corresponding to the given muscle activation, length
+            and tendon length
         """
 
     @abstractmethod

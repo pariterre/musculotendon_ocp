@@ -1,8 +1,7 @@
-from .force_active import ForceActiveHillType
-from .force_damping import ForceDampingConstant, ForceDampingLinear
-from .force_passive import ForcePassiveHillType, ForcePassiveAlwaysPositiveHillType
-from .force_velocity import ForceVelocityHillType
-from .compute_pennation_angle import ComputePennationAngleConstant, ComputePennationAngleWrtMuscleFiberLength
+from .compute_force_active import ComputeForceActiveHillType
+from .compute_force_damping import ComputeForceDampingConstant, ComputeForceDampingLinear
+from .compute_force_passive import ComputeForcePassiveHillType, ComputeForcePassiveAlwaysPositiveHillType
+from .compute_force_velocity import ComputeForceVelocityHillType
 
 from .muscle_model_hill_rigid_tendon import MuscleModelHillRigidTendon
 from .muscle_model_hill_flexible_tendon import (
@@ -11,14 +10,12 @@ from .muscle_model_hill_flexible_tendon import (
 )
 
 __all__ = [
-    ForceActiveHillType.__name__,
-    ForceDampingConstant.__name__,
-    ForceDampingLinear.__name__,
-    ForcePassiveHillType.__name__,
-    ForcePassiveAlwaysPositiveHillType.__name__,
-    ForceVelocityHillType.__name__,
-    ComputePennationAngleConstant.__name__,
-    ComputePennationAngleWrtMuscleFiberLength.__name__,
+    ComputeForceActiveHillType.__name__,
+    ComputeForceDampingConstant.__name__,
+    ComputeForceDampingLinear.__name__,
+    ComputeForcePassiveHillType.__name__,
+    ComputeForcePassiveAlwaysPositiveHillType.__name__,
+    ComputeForceVelocityHillType.__name__,
     MuscleModelHillRigidTendon.__name__,
     MuscleModelHillFlexibleTendon.__name__,
     MuscleModelHillFlexibleTendonAlwaysPositive.__name__,

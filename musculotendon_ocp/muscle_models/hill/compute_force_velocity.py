@@ -1,7 +1,7 @@
 from casadi import MX, log, sqrt
 
 
-class ForceVelocityHillType:
+class ComputeForceVelocityHillType:
     def __init__(
         self,
         d1: float = -0.318,
@@ -33,3 +33,23 @@ class ForceVelocityHillType:
         velocity = normalized_muscle_fiber_velocity
 
         return self.d1 * log((self.d2 * velocity + self.d3) + sqrt(((self.d2 * velocity + self.d3) ** 2) + 1)) + self.d4
+
+    def inverse(
+        self,
+        activation: MX,
+        pennation_angle: MX,
+        force_passive: MX,
+        force_active: MX,
+        force_damping: MX,
+        tendon_force: MX,
+    ) -> MX:
+        raise NotImplementedError("The inverse of the force-velocity relationship is not implemented yet")
+        # return self.maximal_velocity * muscle._force_velocity_inverse(
+        #     (tendon_force / cos(pennation_angle) - force_passive - force_damping) / (activation * force_active)
+        # )
+        # # fv_inv = (self.ft(tendon_length_normalized) / casadi.cos(pennationAngle) - self.fpas(lm_normalized)) / (
+        # #     activation * self.fact(lm_normalized)
+        # # )
+
+        # # vm_normalized = 1 / d2 * (casadi.sinh(1 / d1 * (fv_inv - d4)) - d3)
+        # # return vm_normalized

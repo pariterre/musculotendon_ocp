@@ -1,10 +1,10 @@
 from musculotendon_ocp import (
     MuscleModelHillFlexibleTendon,
     MuscleModelHillFlexibleTendonAlwaysPositive,
-    ForcePassiveHillType,
-    ForceActiveHillType,
-    ForceDampingConstant,
-    ForceVelocityHillType,
+    ComputeForcePassiveHillType,
+    ComputeForceActiveHillType,
+    ComputeForceDampingConstant,
+    ComputeForceVelocityHillType,
 )
 from numpy.testing import assert_almost_equal
 
@@ -19,10 +19,10 @@ def test_muscle_model_hill_flexible_tendon():
     c2 = 1.5
     c3 = 0.3
     kt = 40.0
-    force_passive = ForceVelocityHillType()
-    force_active = ForceActiveHillType()
-    force_damping = ForceDampingConstant()
-    force_velocity = ForceVelocityHillType()
+    compute_force_passive = ComputeForceVelocityHillType()
+    compute_force_active = ComputeForceActiveHillType()
+    compute_force_damping = ComputeForceDampingConstant()
+    compute_force_velocity = ComputeForceVelocityHillType()
 
     model = MuscleModelHillFlexibleTendon(
         name=name,
@@ -34,10 +34,10 @@ def test_muscle_model_hill_flexible_tendon():
         c2=c2,
         c3=c3,
         kt=kt,
-        force_passive=force_passive,
-        force_active=force_active,
-        force_damping=force_damping,
-        force_velocity=force_velocity,
+        compute_force_passive=compute_force_passive,
+        compute_force_active=compute_force_active,
+        compute_force_damping=compute_force_damping,
+        compute_force_velocity=compute_force_velocity,
     )
 
     assert model.name == name
@@ -49,10 +49,10 @@ def test_muscle_model_hill_flexible_tendon():
     assert model.c2 == c2
     assert model.c3 == c3
     assert model.kt == kt
-    assert id(model._force_passive) == id(force_passive)
-    assert id(model._force_active) == id(force_active)
-    assert id(model._force_damping) == id(force_damping)
-    assert id(model._force_velocity) == id(force_velocity)
+    assert id(model.compute_force_passive) == id(compute_force_passive)
+    assert id(model.compute_force_active) == id(compute_force_active)
+    assert id(model.compute_force_damping) == id(compute_force_damping)
+    assert id(model.compute_force_velocity) == id(compute_force_velocity)
 
     model_default = MuscleModelHillFlexibleTendon(
         name=name,
@@ -66,10 +66,10 @@ def test_muscle_model_hill_flexible_tendon():
     assert model_default.c2 == 0.995
     assert model_default.c3 == 0.250
     assert model_default.kt == 35.0
-    assert model_default._force_passive.__dict__ == ForcePassiveHillType().__dict__
-    assert model_default._force_active.__dict__ == ForceActiveHillType().__dict__
-    assert model_default._force_damping.__dict__ == ForceDampingConstant().__dict__
-    assert model_default._force_velocity.__dict__ == ForceVelocityHillType().__dict__
+    assert model_default.compute_force_passive.__dict__ == ComputeForcePassiveHillType().__dict__
+    assert model_default.compute_force_active.__dict__ == ComputeForceActiveHillType().__dict__
+    assert model_default.compute_force_damping.__dict__ == ComputeForceDampingConstant().__dict__
+    assert model_default.compute_force_velocity.__dict__ == ComputeForceVelocityHillType().__dict__
 
 
 def test_muscle_model_hill_flexible_tendon_normalize_tendon_length():

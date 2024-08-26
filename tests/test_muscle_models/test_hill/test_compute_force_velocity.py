@@ -1,9 +1,9 @@
-from musculotendon_ocp import ForceVelocityHillType
+from musculotendon_ocp import ComputeForceVelocityHillType
 from numpy.testing import assert_almost_equal
 
 
-def test_force_velocity_hill_type():
-    force_velocity_model = ForceVelocityHillType()
+def test_compute_force_velocity_hill_type():
+    force_velocity_model = ComputeForceVelocityHillType()
 
     assert force_velocity_model.d1 == -0.318
     assert force_velocity_model.d2 == -8.149

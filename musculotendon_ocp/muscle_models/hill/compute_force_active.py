@@ -1,7 +1,7 @@
 from casadi import MX, exp
 
 
-class ForceActiveHillType:
+class ComputeForceActiveHillType:
     def __init__(
         self,
         b11: float = 0.814483478343008,

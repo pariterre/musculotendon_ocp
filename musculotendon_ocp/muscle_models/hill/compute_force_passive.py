@@ -1,7 +1,7 @@
 from casadi import MX, exp
 
 
-class ForcePassiveHillType:
+class ComputeForcePassiveHillType:
     def __init__(self, kpe: float = 4.0, e0: float = 0.6):
         self.kpe = kpe
         self.e0 = e0
@@ -23,13 +23,16 @@ class ForcePassiveHillType:
         return (exp(self.kpe * (normalized_muscle_fiber_length - 1) / self.e0) - 1) / (exp(self.kpe) - 1)
 
 
-class ForcePassiveAlwaysPositiveHillType(ForcePassiveHillType):
+class ComputeForcePassiveAlwaysPositiveHillType(ComputeForcePassiveHillType):
     @property
     def offset(self) -> float:
         """
         Get the offset to ensure the force is always positive, by offsetting the force by the minimum value
         """
-        return super(ForcePassiveAlwaysPositiveHillType, self).__call__(0.0)
+        return super(ComputeForcePassiveAlwaysPositiveHillType, self).__call__(0.0)
 
     def __call__(self, normalized_muscle_fiber_length: MX) -> MX:
-        return super(ForcePassiveAlwaysPositiveHillType, self).__call__(normalized_muscle_fiber_length) - self.offset
+        return (
+            super(ComputeForcePassiveAlwaysPositiveHillType, self).__call__(normalized_muscle_fiber_length)
+            - self.offset
+        )

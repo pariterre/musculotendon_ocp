@@ -1,9 +1,9 @@
 from typing import override
 
-from casadi import MX, exp
+from casadi import MX, exp, cos
 
 from .muscle_model_hill_rigid_tendon import MuscleModelHillRigidTendon
-from ..muscle_model_abstract import ComputeMuscleFiberLengthCallable, ComputeMuscleFiberVelocityCallable
+from ..muscle_model_abstract import ComputeMuscleFiberLength, ComputeMuscleFiberVelocity
 from ..compute_muscle_fiber_length import (
     ComputeMuscleFiberLengthRigidTendon,
     ComputeMuscleFiberLengthInstantaneousEquilibrium,
@@ -22,8 +22,8 @@ class MuscleModelHillFlexibleTendon(MuscleModelHillRigidTendon):
         c2: float = 0.995,
         c3: float = 0.250,
         kt: float = 35.0,
-        compute_muscle_fiber_length: ComputeMuscleFiberLengthCallable | None = None,
-        compute_muscle_fiber_velocity: ComputeMuscleFiberVelocityCallable | None = None,
+        compute_muscle_fiber_length: ComputeMuscleFiberLength | None = None,
+        compute_muscle_fiber_velocity: ComputeMuscleFiberVelocity | None = None,
         **kwargs,
     ):
         """
@@ -53,6 +53,35 @@ class MuscleModelHillFlexibleTendon(MuscleModelHillRigidTendon):
         self.c2 = c2
         self.c3 = c3
         self.kt = kt
+
+    @override
+    def compute_muscle_force_velocity_inverse(self, activation: MX, muscle_fiber_length: MX, tendon_length: MX) -> MX:
+        raise NotImplementedError("The inverse force-velocity relationship is not implemented yet")
+        # # Get the normalized muscle length and velocity
+        # normalized_length = self.normalize_muscle_fiber_length(muscle_fiber_length)
+
+        # # Compute the passive, active, velocity and damping factors
+        # pennation_angle = self.compute_pennation_angle(muscle_fiber_length)
+        # force_passive = self.compute_force_passive(normalized_length)
+        # force_active = self.compute_force_active(normalized_length)
+        # force_damping = self.compute_force_damping(1)
+        # if force_damping != 0:
+        #     raise NotImplementedError("Damping with value != 0 is not implemented yet")
+
+        # tendon_force = self.compute_tendon_force(tendon_length)
+        # fv_inverse = self.compute_muscle_fiber_velocity.inverse(
+        #     activation, pennation_angle, force_passive, force_active, force_damping, tendon_force
+        # )
+
+        # return self.maximal_velocity * muscle._force_velocity_inverse(
+        #     (tendon_force / cos(pennation_angle) - force_passive - force_damping) / (activation * force_active)
+        # )
+        # # fv_inv = (self.ft(tendon_length_normalized) / casadi.cos(pennationAngle) - self.fpas(lm_normalized)) / (
+        # #     activation * self.fact(lm_normalized)
+        # # )
+
+        # # vm_normalized = 1 / d2 * (casadi.sinh(1 / d1 * (fv_inv - d4)) - d3)
+        # # return vm_normalized
 
     @override
     def normalize_tendon_length(self, tendon_length: MX) -> MX:
