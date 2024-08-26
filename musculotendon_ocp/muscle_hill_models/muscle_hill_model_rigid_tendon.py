@@ -1,4 +1,4 @@
-from typing import override, Protocol
+from typing import override
 
 from casadi import MX
 
@@ -81,12 +81,27 @@ class MuscleHillModelRigidTendon(MuscleHillModelAbstract):
         return muscle_fiber_length / self.optimal_length
 
     @override
+    def denormalize_muscle_fiber_length(self, normalized_muscle_fiber_length: MX) -> MX:
+        # TODO TEST THIS
+        return normalized_muscle_fiber_length * self.optimal_length
+
+    @override
     def normalize_muscle_fiber_velocity(self, muscle_fiber_velocity: MX) -> MX:
         return muscle_fiber_velocity / self.maximal_velocity
 
     @override
+    def denormalize_muscle_fiber_velocity(self, normalized_muscle_fiber_velocity: MX) -> MX:
+        # TODO TEST THIS
+        return normalized_muscle_fiber_velocity * self.maximal_velocity
+
+    @override
     def normalize_tendon_length(self, tendon_length: MX) -> MX:
         raise RuntimeError("The tendon length should not be normalized with a rigid tendon")
+
+    @override
+    def denormalize_tendon_length(self, normalized_tendon_length: MX) -> MX:
+        # TODO TEST THIS
+        raise RuntimeError("The tendon length should not be denormalized with a rigid tendon")
 
     @override
     def compute_muscle_force(self, activation: MX, muscle_fiber_length: MX, muscle_fiber_velocity: MX) -> MX:
@@ -95,21 +110,23 @@ class MuscleHillModelRigidTendon(MuscleHillModelAbstract):
         normalized_velocity = self.normalize_muscle_fiber_velocity(muscle_fiber_velocity)
 
         # Compute the passive, active, velocity and damping factors
-        pennation_angle = self.compute_pennation_angle(muscle_fiber_length)
         force_passive = self.compute_force_passive(normalized_length)
         force_active = self.compute_force_active(normalized_length)
         force_velocity = self.compute_force_velocity(normalized_velocity)
         force_damping = self.compute_force_damping(normalized_velocity)
 
-        return (
-            pennation_angle
-            * self.maximal_force
-            * (force_passive + activation * force_active * force_velocity + force_damping)
+        # TODO Are we supposed to apply pennation here?
+        return self.compute_pennation_angle.apply(
+            muscle_fiber_length,
+            self.maximal_force * (force_passive + activation * force_active * force_velocity + force_damping),
         )
 
     @override
-    def compute_muscle_force_velocity_inverse(self, activation: MX, muscle_fiber_length: MX, tendon_length: MX) -> MX:
-        raise NotImplementedError("The force-velocity relationship is not invertible with a rigid tendon")
+    def compute_muscle_fiber_velocity_from_inverse(
+        activation: MX, muscle_fiber_length: MX, muscle_fiber_velocity: MX, tendon_length: MX
+    ) -> MX:
+        # TODO ADD TEST
+        raise RuntimeError("The inverse of muscle fiber velocity should not be computed with a rigid tendon")
 
     @override
     def compute_tendon_length(self, muscle_tendon_length: MX, muscle_fiber_length: MX) -> MX:

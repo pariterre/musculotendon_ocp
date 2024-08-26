@@ -58,6 +58,21 @@ class ComputeForceVelocity(Protocol):
             The normalized force corresponding to the given muscle length and velocity
         """
 
+    def inverse(force_velocity_inverse: MX) -> MX:
+        """
+        Compute the normalized velocity from the inverse of the force-velocity relationship
+
+        Parameters
+        ----------
+        force_velocity_inverse: MX
+            The inverse of the force-velocity relationship
+
+        Returns
+        -------
+        MX
+            The normalized velocity corresponding to the given inverse of the force-velocity relationship
+        """
+
 
 class ComputeForceDamping:
     def __call__(self, normalized_muscle_fiber_velocity: MX) -> MX:
@@ -92,6 +107,23 @@ class ComputePennationAngle(Protocol):
             The pennation angle corresponding to the given muscle length
         """
 
+    def apply(self, muscle_fiber_length: MX, element: MX) -> MX:
+        """
+        Apply the pennation angle to an element
+
+        Parameters
+        ----------
+        muscle_fiber_length: MX
+            The muscle length
+        element: MX
+            The element to apply the pennation angle to
+
+        Returns
+        -------
+        MX
+            The element with the pennation angle applied
+        """
+
 
 class ComputeMuscleFiberLength(Protocol):
     def __call__(
@@ -124,6 +156,12 @@ class ComputeMuscleFiberLength(Protocol):
         -------
         MX
             The muscle length
+        """
+
+    @property
+    def mx_variable(self) -> MX:
+        """
+        Get the muscle fiber length MX
         """
 
 
@@ -167,31 +205,10 @@ class ComputeMuscleFiberVelocity(Protocol):
             The muscle length
         """
 
-    def inverse(
-        activation: MX, pennation_angle: MX, force_passive: MX, force_active: MX, force_damping: MX, tendon_force: MX
-    ) -> MX:
+    @property
+    def mx_variable(self) -> MX:
         """
-        Compute the inverse of the force-velocity relationship
-
-        Parameters
-        ----------
-        activation: MX
-            The muscle activation
-        pennation_angle: MX
-            The computed pennation angle
-        force_passive: MX
-            The computed passive force
-        force_active: MX
-            The computed active force
-        force_damping: MX
-            The computed damping force
-        tendon_force: MX
-            The computed tendon force
-
-        Returns
-        -------
-        MX
-            The inverse of the force-velocity relationship
+        Get the muscle fiber velocity MX
         """
 
 
@@ -314,6 +331,22 @@ class MuscleHillModelAbstract(ABC):
         """
 
     @abstractmethod
+    def denormalize_muscle_fiber_length(self, normalized_muscle_fiber_length: MX) -> MX:
+        """
+        Compute the denormalized muscle length
+
+        Parameters
+        ----------
+        normalized_muscle_fiber_length: MX
+            The normalized muscle length
+
+        Returns
+        -------
+        MX
+            The denormalized muscle length
+        """
+
+    @abstractmethod
     def normalize_muscle_fiber_velocity(self, muscle_fiber_velocity: MX) -> MX:
         """
         Compute the normalized muscle velocity
@@ -330,6 +363,22 @@ class MuscleHillModelAbstract(ABC):
         """
 
     @abstractmethod
+    def denormalize_muscle_fiber_velocity(self, normalized_muscle_fiber_velocity: MX) -> MX:
+        """
+        Compute the denormalized muscle velocity
+
+        Parameters
+        ----------
+        normalized_muscle_fiber_velocity: MX
+            The normalized muscle velocity
+
+        Returns
+        -------
+        MX
+            The denormalized muscle velocity
+        """
+
+    @abstractmethod
     def normalize_tendon_length(self, tendon_length: MX) -> MX:
         """
         Compute the normalized tendon length
@@ -343,6 +392,22 @@ class MuscleHillModelAbstract(ABC):
         -------
         MX
             The normalized tendon length
+        """
+
+    @abstractmethod
+    def denormalize_tendon_length(self, normalized_tendon_length: MX) -> MX:
+        """
+        Compute the denormalized tendon length
+
+        Parameters
+        ----------
+        normalized_tendon_length: MX
+            The normalized tendon length
+
+        Returns
+        -------
+        MX
+            The denormalized tendon length
         """
 
     @abstractmethod
@@ -366,9 +431,11 @@ class MuscleHillModelAbstract(ABC):
         """
 
     @abstractmethod
-    def compute_muscle_force_velocity_inverse(self, activation: MX, muscle_fiber_length: MX, tendon_length: MX) -> MX:
+    def compute_muscle_fiber_velocity_from_inverse(
+        activation: MX, muscle_fiber_length: MX, muscle_fiber_velocity: MX, tendon_length: MX
+    ) -> MX:
         """
-        Compute the inverse of the muscle force-velocity relationship
+        Compute the muscle fiber velocity by inverting the force-velocity relationship.
 
         Parameters
         ----------
@@ -376,14 +443,15 @@ class MuscleHillModelAbstract(ABC):
             The muscle activation
         muscle_fiber_length: MX
             The length of the muscle fibers
+        muscle_fiber_velocity: MX
+            The velocity of the muscle fibers
         tendon_length: MX
             The length of the tendon
 
         Returns
         -------
         MX
-            The inverse of the muscle force-velocity relationship corresponding to the given muscle activation, length
-            and tendon length
+            The muscle fiber velocity corresponding to the given muscle activation, length and tendon length
         """
 
     @abstractmethod

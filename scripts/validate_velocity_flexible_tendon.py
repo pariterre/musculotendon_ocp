@@ -7,6 +7,7 @@ from musculotendon_ocp import (
     MuscleBiorbdModel,
     MuscleHillModelFlexibleTendon,
     ComputeMuscleFiberLengthAsVariable,
+    ComputeMuscleFiberVelocityFlexibleTendonImplicit,
     ComputeMuscleFiberVelocityFlexibleTendonExplicit,
     ComputeForceDampingLinear,
 )
@@ -35,45 +36,45 @@ def compute_muscle_fiber_velocities(
     all_q: np.ndarray,
     all_qdot: np.ndarray,
 ) -> np.ndarray:
-    velocities = [np.ndarray(len(all_q.T)) for _ in range(model.nb_muscles)]
+    lmdot = [np.ndarray(len(all_q.T)) for _ in range(model.nb_muscles)]
 
-    muscle_fiber_velocities_func = model.to_casadi_function(
+    muscle_fiber_lengths_dot_func = model.to_casadi_function(
         model.muscle_fiber_velocities, "activations", "q", "qdot", "muscle_fiber_lengths"
     )
 
     for i, (lengths, q, qdot) in enumerate(zip(all_muscle_lengths.T, all_q.T, all_qdot.T)):
-        vel_all_muscles = muscle_fiber_velocities_func(
+        lmdot_all_muscles = muscle_fiber_lengths_dot_func(
             activations=activations,
             q=q,
             qdot=qdot,
             muscle_fiber_lengths=lengths,
         )["output"].__array__()
-        for m, vel_muscle in enumerate(vel_all_muscles):
-            velocities[m][i] = vel_muscle
+        for m, vel_muscle in enumerate(lmdot_all_muscles):
+            lmdot[m][i] = vel_muscle
 
-    return velocities
+    return lmdot
 
 
 # TODO ipuch should we use this
-last_computed_velocity = [np.array([0])]
+last_computed_lmdot = [np.array([0])]
 
 
 def dynamics(_, x, dynamics_functions: list[Callable], model: MuscleBiorbdModel, activations: np.ndarray) -> np.ndarray:
     # TODO Find a way to initialize muscle_velocities?
-    muscle_fiber_velocity_func, forward_dynamics_func = dynamics_functions
+    muscle_fiber_lmdot_func, forward_dynamics_func = dynamics_functions
 
     fiber_lengths = x[: model.nb_muscles]
     q = x[model.nb_muscles : model.nb_muscles + model.nb_q]
     qdot = x[model.nb_muscles + model.nb_q :]
 
-    fiber_lengths_dot = muscle_fiber_velocity_func(
+    fiber_lengths_dot = muscle_fiber_lmdot_func(
         activations=activations,
         q=q,
         qdot=qdot,
         muscle_fiber_lengths=fiber_lengths,
         # muscle_fiber_velocities=last_computed_velocity[-1],
     )["output"].__array__()[:, 0]
-    last_computed_velocity.append(fiber_lengths_dot)
+    last_computed_lmdot.append(fiber_lengths_dot)
 
     qddot = forward_dynamics_func(
         activations=activations,
@@ -99,7 +100,7 @@ def prepare_forward_dynamics(model: MuscleBiorbdModel, activations: MX, q: MX, q
     return qddot
 
 
-def main():
+def main(use_implicit_velocity_computation: bool = False):
     model = MuscleBiorbdModel(
         "musculotendon_ocp/rigidbody_models/models/one_muscle_holding_a_cube.bioMod",
         muscles=[
@@ -108,19 +109,23 @@ def main():
                 maximal_force=1000,
                 optimal_length=0.1,
                 tendon_slack_length=0.16,
-                compute_force_damping=ComputeForceDampingLinear(factor=0.1),
+                compute_force_damping=ComputeForceDampingLinear(factor=0.0),
                 maximal_velocity=5.0,
                 compute_muscle_fiber_length=ComputeMuscleFiberLengthAsVariable(),
-                compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityFlexibleTendonExplicit(),
+                compute_muscle_fiber_velocity=(
+                    ComputeMuscleFiberVelocityFlexibleTendonImplicit()
+                    if use_implicit_velocity_computation
+                    else ComputeMuscleFiberVelocityFlexibleTendonExplicit()
+                ),
             ),
         ],
     )
 
-    t_span = (0, 1.5)
+    t_span = (0, 0.5)
     t = np.linspace(*t_span, 10000)
     q = np.ones(model.nb_q) * -0.24
     qdot = np.zeros(model.nb_qdot)
-    activations = np.ones(model.nb_muscles) * 0.1
+    activations = np.ones(model.nb_muscles) * 0.6
     initial_muscle_fiber_length = np.array(
         model.function_to_dm(model.muscle_fiber_lengths_equilibrated, activations=activations, q=q, qdot=qdot)
     )[:, 0]

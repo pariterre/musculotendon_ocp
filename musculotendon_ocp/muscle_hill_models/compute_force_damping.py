@@ -1,4 +1,4 @@
-from casadi import MX, exp
+from casadi import MX
 
 
 class ComputeForceDampingConstant:

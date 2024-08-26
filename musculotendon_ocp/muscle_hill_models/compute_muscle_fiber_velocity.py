@@ -1,7 +1,7 @@
 from functools import cached_property
 
 import biorbd_casadi as biorbd
-from casadi import MX, Function, rootfinder, cos
+from casadi import MX, Function, rootfinder, symvar
 
 from .muscle_hill_model_abstract import MuscleHillModelAbstract
 from .compute_muscle_fiber_length import ComputeMuscleFiberLengthRigidTendon
@@ -84,7 +84,7 @@ class ComputeMuscleFiberVelocityFlexibleTendonImplicit(ComputeMuscleFiberVelocit
         # Compute necessary variables
         biorbd_muscle.updateOrientations(model_kinematic_updated, q)
         tendon_length = muscle.compute_tendon_length(
-            biorbd_muscle.musculoTendonLength(model_kinematic_updated, q).to_mx(), muscle_fiber_length
+            biorbd_muscle.musculoTendonLength(model_kinematic_updated, q).to_mx(), muscle_fiber_length_mx
         )
 
         # Compute the muscle and tendon forces
@@ -134,6 +134,7 @@ class ComputeMuscleFiberVelocityFlexibleTendonExplicit(ComputeMuscleFiberVelocit
         qdot: MX,
         muscle_fiber_length: MX,
     ) -> biorbd.MX:
+        # TODO ADD TEST
         if isinstance(muscle.compute_muscle_fiber_length, ComputeMuscleFiberLengthRigidTendon):
             raise ValueError("The compute_muscle_fiber_length must not be a ComputeMuscleFiberLengthRigidTendon")
 
@@ -144,16 +145,32 @@ class ComputeMuscleFiberVelocityFlexibleTendonExplicit(ComputeMuscleFiberVelocit
 
         # Compute necessary variables
         biorbd_muscle.updateOrientations(model_kinematic_updated, q)
-        tendon_length = muscle.compute_tendon_length(
-            biorbd_muscle.musculoTendonLength(model_kinematic_updated, q).to_mx(), muscle_fiber_length
+        muscle_tendon_length = biorbd_muscle.musculoTendonLength(model_kinematic_updated, q).to_mx()
+        tendon_length = muscle.compute_tendon_length(muscle_tendon_length, muscle_fiber_length)
+
+        # Get the normalized muscle length and velocity
+        muscle_velocity = muscle.compute_muscle_fiber_velocity_from_inverse(
+            activation=activation_mx,
+            muscle_fiber_length=muscle_fiber_length,
+            muscle_fiber_velocity=muscle_fiber_velocity_mx,
+            tendon_length=tendon_length,
         )
 
-        # Compute the muscle and tendon forces
-        muscle_velocity = muscle.compute_force_velocity.inverse(
-            activation=activation_mx, muscle_fiber_length=muscle_fiber_length, tendon_length=tendon_length
-        )
-
-        return muscle_velocity
+        # If the muscle_fiber_velocity does not depends on the muscle_fiber_velocity_mx, then the muscle_fiber_velocity
+        # can be directly computed. Otherwise, the muscle_fiber_velocity_mx is the unknown value that rootfinder tries
+        # to optimize.
+        if muscle_fiber_velocity_mx.name() not in [var.name() for var in symvar(muscle_velocity)]:
+            # Remove the activation_mx
+            return Function(
+                "tp",
+                [
+                    activation_mx,
+                    muscle_fiber_length_mx,
+                    muscle_fiber_velocity_mx,
+                    q if isinstance(q, MX) else MX.sym("dummy_q"),
+                ],
+                [muscle_velocity],
+            )(activation, muscle_fiber_length_mx, muscle_fiber_velocity_mx, q)
 
         # The muscle_fiber_length is found when it equates the muscle and tendon forces
         equality_constraint = Function(
@@ -164,7 +181,7 @@ class ComputeMuscleFiberVelocityFlexibleTendonExplicit(ComputeMuscleFiberVelocit
                 activation_mx,
                 q if isinstance(q, MX) else MX.sym("dummy_q"),
             ],
-            [force_muscle - force_tendon],
+            [muscle_velocity - muscle_fiber_velocity_mx],
         )
 
         # Reminder: the first variable of the function is the unknown value that rootfinder tries to optimize.
@@ -177,6 +194,3 @@ class ComputeMuscleFiberVelocityFlexibleTendonExplicit(ComputeMuscleFiberVelocit
         )
 
         return newton_method(i0=0, i1=muscle_fiber_length, i2=activation, i3=q)["o0"]
-
-
-# TODO Implement the linearized version of the flexible tendon

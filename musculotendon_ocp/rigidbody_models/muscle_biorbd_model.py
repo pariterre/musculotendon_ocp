@@ -2,7 +2,7 @@ from functools import cached_property
 from typing import Iterable, Callable, override, Any
 
 import biorbd_casadi as biorbd
-from bioptim import BiorbdModel, OptimalControlProgram, NonLinearProgram, ConfigureProblem
+from bioptim import BiorbdModel
 from casadi import MX, DM, Function, vertcat
 
 from ..muscle_hill_models.muscle_hill_model_abstract import MuscleHillModelAbstract
@@ -384,9 +384,6 @@ class MuscleBiorbdModel(BiorbdModel):
                 raise ValueError(
                     f"Expected 'q', 'qdot', 'activations', 'muscle_fiber_lengths' or 'muscle_fiber_velocities', got {key}"
                 )
-
-        muscle_lengths_mx = self.muscle_fiber_lengths_mx
-        muscle_velocities_mx = self.muscle_fiber_velocities_mx
 
         return Function(
             "f",

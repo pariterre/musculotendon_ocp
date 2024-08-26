@@ -11,8 +11,15 @@ class DummyMuscleModelAbstract(MuscleHillModelAbstract):
     def normalize_muscle_fiber_length(self, muscle_fiber_length: MX) -> MX:
         pass
 
+    def denormalize_muscle_fiber_length(self, normalized_muscle_fiber_length: MX) -> MX:
+        pass
+
     @override
     def normalize_muscle_fiber_velocity(self, muscle_fiber_velocity: MX) -> MX:
+        pass
+
+    @override
+    def denormalize_muscle_fiber_velocity(self, normalized_muscle_fiber_velocity: MX) -> MX:
         pass
 
     @override
@@ -20,12 +27,17 @@ class DummyMuscleModelAbstract(MuscleHillModelAbstract):
         pass
 
     @override
+    def denormalize_tendon_length(self, normalized_tendon_length: MX) -> MX:
+        pass
+
+    @override
     def compute_muscle_force(self, activation: MX, muscle_fiber_length: MX, muscle_fiber_velocity: MX) -> MX:
         pass
 
     @override
-    def compute_muscle_force_velocity_inverse(self, activation: MX, muscle_fiber_length: MX, tendon_length: MX) -> MX:
-        # TODO Update the signature of this method
+    def compute_muscle_fiber_velocity_from_inverse(
+        self, muscle_fiber_length: MX, normalized_muscle_fiber_velocity: MX
+    ) -> MX:
         pass
 
     @override
