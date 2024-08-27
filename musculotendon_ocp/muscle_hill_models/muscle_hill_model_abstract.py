@@ -73,8 +73,32 @@ class ComputeForceVelocity(Protocol):
             The normalized velocity corresponding to the given inverse of the force-velocity relationship
         """
 
+    def derivative(self, normalized_muscle_fiber_velocity: MX) -> tuple[MX, MX]:
+        """
+        # TODO Fix the docstring
+        Computation of the linear approximation coefficients of muscle velocity force to linearize the force-velocity
+        relationship at a given normalized_muscle_fiber_velocity.
+
+        Parameters
+        ----------
+        normalized_muscle_fiber_velocity: MX
+            The normalized muscle velocity
+
+        Returns
+        -------
+        tuple[MX, MX]
+            The linear approximation coefficient (a, b) such that the force-velocity relationship can be approximated
+            as f = a * v + b
+        """
+
 
 class ComputeForceDamping:
+    @property
+    def factor(self):
+        """
+        Return the factor of the damping
+        """
+
     def __call__(self, normalized_muscle_fiber_velocity: MX) -> MX:
         """
         Compute the normalized force from the damping
@@ -432,7 +456,7 @@ class MuscleHillModelAbstract(ABC):
 
     @abstractmethod
     def compute_muscle_fiber_velocity_from_inverse(
-        activation: MX, muscle_fiber_length: MX, muscle_fiber_velocity: MX, tendon_length: MX
+        self, activation: MX, muscle_fiber_length: MX, muscle_fiber_velocity: MX, tendon_length: MX
     ) -> MX:
         """
         Compute the muscle fiber velocity by inverting the force-velocity relationship.
@@ -495,8 +519,6 @@ class MuscleHillModelAbstract(ABC):
 
         Parameters
         ----------
-        model: MuscleBiorbdModel
-            The model that implements MuscleBiorbdModel.
         mx_function: Callable
             The CasADi MX function to convert to a casadi function.
         keys: Iterable[str]

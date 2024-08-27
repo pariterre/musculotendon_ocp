@@ -1,13 +1,23 @@
-from musculotendon_ocp import ComputePennationAngleConstant, ComputePennationAngleWrtMuscleFiberLength
+from musculotendon_ocp import ComputePennationAngleMethods
 from numpy.testing import assert_almost_equal
 import pytest
 
 
+def test_compute_pennation_angle_methods():
+    assert len(ComputePennationAngleMethods) == 2
+
+    constant = ComputePennationAngleMethods.Constant()
+    assert type(constant) == ComputePennationAngleMethods.Constant.value
+
+    wrt_muscle_fiber_length = ComputePennationAngleMethods.WrtMuscleFiberLength()
+    assert type(wrt_muscle_fiber_length) == ComputePennationAngleMethods.WrtMuscleFiberLength.value
+
+
 def test_compute_pennation_angle_constant():
     with pytest.raises(ValueError, match="The pennation angle must be positive"):
-        ComputePennationAngleConstant(pennation_angle=-0.1)
+        ComputePennationAngleMethods.Constant(pennation_angle=-0.1)
 
-    pennation_angle_model = ComputePennationAngleConstant(pennation_angle=0.1)
+    pennation_angle_model = ComputePennationAngleMethods.Constant(pennation_angle=0.1)
 
     assert pennation_angle_model.pennation_angle == 0.1
 
@@ -34,9 +44,9 @@ def test_compute_pennation_angle_constant():
 
 def test_compute_pennation_angle_wrt_muscle_fiber_length():
     with pytest.raises(ValueError, match="The optimal pennation angle must be positive"):
-        ComputePennationAngleWrtMuscleFiberLength(optimal_pennation_angle=-0.1, optimal_muscle_fiber_length=1.1)
+        ComputePennationAngleMethods.WrtMuscleFiberLength(optimal_pennation_angle=-0.1, optimal_muscle_fiber_length=1.1)
 
-    pennation_angle_model = ComputePennationAngleWrtMuscleFiberLength(
+    pennation_angle_model = ComputePennationAngleMethods.WrtMuscleFiberLength(
         optimal_pennation_angle=0.1, optimal_muscle_fiber_length=1.1
     )
 
@@ -62,5 +72,9 @@ def test_compute_pennation_angle_wrt_muscle_fiber_length():
     # Test values based on qualitative behavior (increasing exponential function)
     assert pennation_angle_model.apply(1.0, 0.0) == 0.0
     assert pennation_angle_model.apply(1.1, 0.5) < pennation_angle_model.apply(1.2, 0.5)
-    assert pennation_angle_model.apply(1.1, 0.5) == ComputePennationAngleConstant(pennation_angle=0.1).apply(1.1, 0.5)
-    assert pennation_angle_model.apply(1.2, 0.5) != ComputePennationAngleConstant(pennation_angle=0.1).apply(1.2, 0.5)
+    assert pennation_angle_model.apply(1.1, 0.5) == ComputePennationAngleMethods.Constant(pennation_angle=0.1).apply(
+        1.1, 0.5
+    )
+    assert pennation_angle_model.apply(1.2, 0.5) != ComputePennationAngleMethods.Constant(pennation_angle=0.1).apply(
+        1.2, 0.5
+    )

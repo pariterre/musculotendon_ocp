@@ -3,12 +3,10 @@ import os
 
 from casadi import MX
 from musculotendon_ocp import (
-    MuscleBiorbdModel,
-    MuscleHillModelRigidTendon,
-    MuscleHillModelFlexibleTendonAlwaysPositive,
-    ComputeMuscleFiberVelocityRigidTendon,
-    ComputeMuscleFiberVelocityFlexibleTendonImplicit,
-    ComputeMuscleFiberVelocityFlexibleTendonExplicit,
+    RigidbodyModels,
+    MuscleHillModels,
+    ComputeMuscleFiberVelocityMethods,
+    ComputeForceDampingMethods,
 )
 import numpy as np
 import pytest
@@ -20,12 +18,25 @@ model_path = (
 )
 
 
+def test_compute_muscle_fiber_velocity_methods():
+    assert len(ComputeMuscleFiberVelocityMethods) == 3
+
+    rigid_tendon = ComputeMuscleFiberVelocityMethods.RigidTendon()
+    assert type(rigid_tendon) == ComputeMuscleFiberVelocityMethods.RigidTendon.value
+
+    flexible_tendon_implicit = ComputeMuscleFiberVelocityMethods.FlexibleTendonImplicit()
+    assert type(flexible_tendon_implicit) == ComputeMuscleFiberVelocityMethods.FlexibleTendonImplicit.value
+
+    flexible_tendon_explicit = ComputeMuscleFiberVelocityMethods.FlexibleTendonExplicit()
+    assert type(flexible_tendon_explicit) == ComputeMuscleFiberVelocityMethods.FlexibleTendonExplicit.value
+
+
 def test_compute_muscle_fiber_velocity_rigid_tendon():
-    mus = MuscleHillModelRigidTendon(
+    mus = MuscleHillModels.RigidTendon(
         name="Mus1", maximal_force=500, optimal_length=0.1, tendon_slack_length=0.123, maximal_velocity=5.0
     )
-    model = MuscleBiorbdModel(model_path, muscles=[mus])
-    compute_muscle_velocity_length = ComputeMuscleFiberVelocityRigidTendon()
+    model = RigidbodyModels.WithMuscles(model_path, muscles=[mus])
+    compute_muscle_velocity_length = ComputeMuscleFiberVelocityMethods.RigidTendon()
 
     activation = np.array([0.5])
     q = np.ones(model.nb_q) * -0.2
@@ -49,12 +60,12 @@ def test_compute_muscle_fiber_velocity_rigid_tendon():
 
 
 def test_compute_muscle_fiber_velocity_flexible_tendon_implicit():
-    mus = MuscleHillModelFlexibleTendonAlwaysPositive(
+    mus = MuscleHillModels.FlexibleTendonAlwaysPositive(
         name="Mus1", maximal_force=500, optimal_length=0.1, tendon_slack_length=0.123, maximal_velocity=5.0
     )
-    model = MuscleBiorbdModel(model_path, muscles=[mus])
+    model = RigidbodyModels.WithMuscles(model_path, muscles=[mus])
 
-    compute_muscle_fiber_velocity = ComputeMuscleFiberVelocityFlexibleTendonImplicit()
+    compute_muscle_fiber_velocity = ComputeMuscleFiberVelocityMethods.FlexibleTendonImplicit()
 
     activation = np.array([0.5])
     q = np.ones(model.nb_q) * -0.2
@@ -75,13 +86,13 @@ def test_compute_muscle_fiber_velocity_flexible_tendon_implicit():
 
 
 def test_compute_muscle_fiber_velocity_flexible_tendon_implicit_wrong_constructor():
-    mus = MuscleHillModelRigidTendon(
+    mus = MuscleHillModels.RigidTendon(
         name="Mus1", maximal_force=500, optimal_length=0.1, tendon_slack_length=0.123, maximal_velocity=5.0
     )
-    model = MuscleBiorbdModel(model_path, muscles=[mus])
+    model = RigidbodyModels.WithMuscles(model_path, muscles=[mus])
 
     mx_symbolic = MX.sym("muscle_fiber_length", 1, 1)
-    compute_muscle_fiber_velocity = ComputeMuscleFiberVelocityFlexibleTendonImplicit(mx_symbolic=mx_symbolic)
+    compute_muscle_fiber_velocity = ComputeMuscleFiberVelocityMethods.FlexibleTendonImplicit(mx_symbolic=mx_symbolic)
 
     activation = np.array([0.5])
     q = np.ones(model.nb_q) * -0.2
@@ -102,12 +113,12 @@ def test_compute_muscle_fiber_velocity_flexible_tendon_implicit_wrong_constructo
 
 
 def test_compute_muscle_fiber_velocity_flexible_tendon_explicit():
-    mus = MuscleHillModelFlexibleTendonAlwaysPositive(
+    mus = MuscleHillModels.FlexibleTendonAlwaysPositive(
         name="Mus1", maximal_force=500, optimal_length=0.1, tendon_slack_length=0.123, maximal_velocity=5.0
     )
-    model = MuscleBiorbdModel(model_path, muscles=[mus])
+    model = RigidbodyModels.WithMuscles(model_path, muscles=[mus])
 
-    compute_muscle_fiber_velocity = ComputeMuscleFiberVelocityFlexibleTendonExplicit()
+    compute_muscle_fiber_velocity = ComputeMuscleFiberVelocityMethods.FlexibleTendonExplicit()
 
     activation = np.array([0.5])
     q = np.ones(model.nb_q) * -0.2

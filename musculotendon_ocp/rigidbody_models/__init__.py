@@ -1,3 +1,7 @@
-from .muscle_biorbd_model import MuscleBiorbdModel
+from .rigidbody_models import RigidbodyModels
+from .rigidbody_model_with_muscles import RigidbodyModelWithMuscles
 
-__all__ = [MuscleBiorbdModel.__name__]
+__all__ = [
+    RigidbodyModels.__name__,
+    RigidbodyModelWithMuscles.__name__,
+]

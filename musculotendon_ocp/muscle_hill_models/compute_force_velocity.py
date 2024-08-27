@@ -1,4 +1,13 @@
-from casadi import MX, log, sqrt, sinh
+from enum import Enum
+
+from casadi import MX, log as logn, sqrt, sinh, log10
+
+from .muscle_hill_model_abstract import ComputeForceVelocity
+
+
+"""
+Implementations of the ComputeForceVelocity protocol
+"""
 
 
 class ComputeForceVelocityHillType:
@@ -16,23 +25,19 @@ class ComputeForceVelocityHillType:
         self.d4 = d4
 
     def __call__(self, normalized_muscle_fiber_velocity: MX) -> MX:
-        """
-        Compute the normalized force from the force-velocity relationship
-
-        Parameters
-        ----------
-        normalized_muscle_fiber_velocity: MX
-            The normalized muscle velocity
-
-        Returns
-        -------
-        MX
-            The normalized force corresponding to the given muscle velocity
-        """
         # alias so the next line is not too long
         velocity = normalized_muscle_fiber_velocity
 
-        return self.d1 * log((self.d2 * velocity + self.d3) + sqrt(((self.d2 * velocity + self.d3) ** 2) + 1)) + self.d4
+        return (
+            self.d1 * logn((self.d2 * velocity + self.d3) + sqrt(((self.d2 * velocity + self.d3) ** 2) + 1)) + self.d4
+        )
 
     def inverse(self, force_velocity_inverse: MX) -> MX:
         return (1 / self.d2) * (sinh((1 / self.d1) * (force_velocity_inverse - self.d4)) - self.d3)
+
+
+class ComputeForceVelocityMethods(Enum):
+    HillType = ComputeForceVelocityHillType
+
+    def __call__(self, *args, **kwargs) -> ComputeForceVelocity:
+        return self.value(*args, **kwargs)

@@ -1,10 +1,20 @@
-from musculotendon_ocp import ComputeForcePassiveHillType, ComputeForcePassiveAlwaysPositiveHillType
+from musculotendon_ocp import ComputeForcePassiveMethods
 from numpy.testing import assert_almost_equal
+
+
+def test_compute_force_passive_methods():
+    assert len(ComputeForcePassiveMethods) == 2
+
+    hill_type = ComputeForcePassiveMethods.HillType()
+    assert type(hill_type) == ComputeForcePassiveMethods.HillType.value
+
+    always_positive_hill_type = ComputeForcePassiveMethods.AlwaysPositiveHillType()
+    assert type(always_positive_hill_type) == ComputeForcePassiveMethods.AlwaysPositiveHillType.value
 
 
 def test_compute_force_passive_hill_type():
 
-    force_passive_model = ComputeForcePassiveHillType()
+    force_passive_model = ComputeForcePassiveMethods.HillType()
 
     assert force_passive_model.kpe == 4.0
     assert force_passive_model.e0 == 0.6
@@ -17,7 +27,7 @@ def test_compute_force_passive_hill_type():
 
 def test_compute_force_passive_always_positive_hill_type():
 
-    force_passive_model = ComputeForcePassiveAlwaysPositiveHillType()
+    force_passive_model = ComputeForcePassiveMethods.AlwaysPositiveHillType()
 
     assert force_passive_model.kpe == 4.0
     assert force_passive_model.e0 == 0.6

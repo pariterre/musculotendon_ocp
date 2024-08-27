@@ -2,14 +2,7 @@ from functools import partial
 import os
 
 from casadi import MX
-from musculotendon_ocp import (
-    MuscleBiorbdModel,
-    MuscleHillModelRigidTendon,
-    MuscleHillModelFlexibleTendonAlwaysPositive,
-    ComputeMuscleFiberLengthRigidTendon,
-    ComputeMuscleFiberLengthAsVariable,
-    ComputeMuscleFiberLengthInstantaneousEquilibrium,
-)
+from musculotendon_ocp import RigidbodyModels, MuscleHillModels, ComputeMuscleFiberLengthMethods
 import numpy as np
 import pytest
 
@@ -20,12 +13,25 @@ model_path = (
 )
 
 
+def test_compute_muscle_fiber_length_methods():
+    assert len(ComputeMuscleFiberLengthMethods) == 3
+
+    rigid_tendon = ComputeMuscleFiberLengthMethods.RigidTendon()
+    assert type(rigid_tendon) == ComputeMuscleFiberLengthMethods.RigidTendon.value
+
+    as_variable = ComputeMuscleFiberLengthMethods.AsVariable()
+    assert type(as_variable) == ComputeMuscleFiberLengthMethods.AsVariable.value
+
+    instantaneous_equilibrium = ComputeMuscleFiberLengthMethods.InstantaneousEquilibrium()
+    assert type(instantaneous_equilibrium) == ComputeMuscleFiberLengthMethods.InstantaneousEquilibrium.value
+
+
 def test_compute_muscle_fiber_length_rigid_tendon():
-    mus = MuscleHillModelRigidTendon(
+    mus = MuscleHillModels.RigidTendon(
         name="Mus1", maximal_force=500, optimal_length=0.1, tendon_slack_length=0.123, maximal_velocity=5.0
     )
-    model = MuscleBiorbdModel(model_path, muscles=[mus])
-    compute_muscle_fiber_length = ComputeMuscleFiberLengthRigidTendon()
+    model = RigidbodyModels.WithMuscles(model_path, muscles=[mus])
+    compute_muscle_fiber_length = ComputeMuscleFiberLengthMethods.RigidTendon()
 
     activation = np.array([0.5])
     q = np.ones(model.nb_q) * -0.2
@@ -46,13 +52,13 @@ def test_compute_muscle_fiber_length_rigid_tendon():
 
 
 def test_compute_muscle_fiber_length_as_variable():
-    mus = MuscleHillModelRigidTendon(
+    mus = MuscleHillModels.RigidTendon(
         name="Mus1", maximal_force=500, optimal_length=0.1, tendon_slack_length=0.123, maximal_velocity=5.0
     )
-    model = MuscleBiorbdModel(model_path, muscles=[mus])
+    model = RigidbodyModels.WithMuscles(model_path, muscles=[mus])
 
     mx_symbolic = MX.sym("muscle_fiber_length", 1, 1)
-    compute_muscle_fiber_length = ComputeMuscleFiberLengthAsVariable(mx_symbolic=mx_symbolic)
+    compute_muscle_fiber_length = ComputeMuscleFiberLengthMethods.AsVariable(mx_symbolic=mx_symbolic)
 
     activation = np.array([0.5])
     q = np.ones(model.nb_q) * -0.2
@@ -68,7 +74,7 @@ def test_compute_muscle_fiber_length_as_variable():
         )
     )
 
-    compute_muscle_fiber_length_default = ComputeMuscleFiberLengthAsVariable()
+    compute_muscle_fiber_length_default = ComputeMuscleFiberLengthMethods.AsVariable()
     muscle_fiber_length = compute_muscle_fiber_length_default(
         muscle=mus,
         model_kinematic_updated=model.model.UpdateKinematicsCustom(q),
@@ -82,12 +88,12 @@ def test_compute_muscle_fiber_length_as_variable():
 
 
 def test_compute_muscle_fiber_length_instantaneous_equilibrium():
-    mus = MuscleHillModelFlexibleTendonAlwaysPositive(
+    mus = MuscleHillModels.FlexibleTendonAlwaysPositive(
         name="Mus1", maximal_force=500, optimal_length=0.1, tendon_slack_length=0.123, maximal_velocity=5.0
     )
-    model = MuscleBiorbdModel(model_path, muscles=[mus])
+    model = RigidbodyModels.WithMuscles(model_path, muscles=[mus])
 
-    compute_muscle_fiber_length = ComputeMuscleFiberLengthInstantaneousEquilibrium()
+    compute_muscle_fiber_length = ComputeMuscleFiberLengthMethods.InstantaneousEquilibrium()
     activation = np.array([0.5])
     q = np.ones(model.nb_q) * -0.2
     qdot = np.ones(model.nb_qdot)
@@ -107,12 +113,12 @@ def test_compute_muscle_fiber_length_instantaneous_equilibrium():
 
 
 def test_compute_muscle_fiber_length_instantaneous_equilibrium_wrong_constructor():
-    mus = MuscleHillModelRigidTendon(
+    mus = MuscleHillModels.RigidTendon(
         name="Mus1", maximal_force=500, optimal_length=0.1, tendon_slack_length=0.123, maximal_velocity=5.0
     )
-    model = MuscleBiorbdModel(model_path, muscles=[mus])
+    model = RigidbodyModels.WithMuscles(model_path, muscles=[mus])
 
-    compute_muscle_fiber_length = ComputeMuscleFiberLengthInstantaneousEquilibrium()
+    compute_muscle_fiber_length = ComputeMuscleFiberLengthMethods.InstantaneousEquilibrium()
     activation = np.array([0.5])
     q = np.ones(model.nb_q) * -0.2
     qdot = np.ones(model.nb_qdot)

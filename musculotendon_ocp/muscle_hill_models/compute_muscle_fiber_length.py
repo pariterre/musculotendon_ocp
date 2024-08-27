@@ -1,9 +1,15 @@
+from enum import Enum
 from functools import cached_property
 
 import biorbd_casadi as biorbd
 from casadi import MX, Function, rootfinder
 
-from .muscle_hill_model_abstract import MuscleHillModelAbstract
+from .muscle_hill_model_abstract import MuscleHillModelAbstract, ComputeMuscleFiberLength
+
+
+"""
+Implementations of th ComputeMuscleFiberLength protocol
+"""
 
 
 class ComputeMuscleFiberLengthAsVariable:
@@ -113,3 +119,12 @@ class ComputeMuscleFiberLengthInstantaneousEquilibrium(ComputeMuscleFiberLengthA
         )
         # Evaluate the muscle fiber length
         return newton_method(i0=0, i1=activation, i2=q)["o0"]
+
+
+class ComputeMuscleFiberLengthMethods(Enum):
+    AsVariable = ComputeMuscleFiberLengthAsVariable
+    RigidTendon = ComputeMuscleFiberLengthRigidTendon
+    InstantaneousEquilibrium = ComputeMuscleFiberLengthInstantaneousEquilibrium
+
+    def __call__(self, *args, **kwargs) -> ComputeMuscleFiberLength:
+        return self.value(*args, **kwargs)

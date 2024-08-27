@@ -1,4 +1,13 @@
+from enum import Enum
+
 from casadi import MX, cos, sin, asin
+
+from .muscle_hill_model_abstract import ComputePennationAngle
+
+
+"""
+Implementations of the ComputePennationAngle protocol
+"""
 
 
 class ComputePennationAngleConstant:
@@ -27,3 +36,11 @@ class ComputePennationAngleWrtMuscleFiberLength:
 
     def apply(self, muscle_fiber_length: MX, element: MX) -> MX:
         return cos(self(muscle_fiber_length)) * element
+
+
+class ComputePennationAngleMethods(Enum):
+    Constant = ComputePennationAngleConstant
+    WrtMuscleFiberLength = ComputePennationAngleWrtMuscleFiberLength
+
+    def __call__(self, *args, **kwargs) -> ComputePennationAngle:
+        return self.value(*args, **kwargs)

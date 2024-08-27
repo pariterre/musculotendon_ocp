@@ -3,11 +3,10 @@ import re
 
 from casadi import MX, Function
 from musculotendon_ocp import (
-    MuscleBiorbdModel,
-    MuscleHillModelRigidTendon,
-    MuscleHillModelFlexibleTendonAlwaysPositive,
-    ComputeMuscleFiberLengthAsVariable,
-    ComputeMuscleFiberVelocityFlexibleTendonImplicit,
+    RigidbodyModels,
+    MuscleHillModels,
+    ComputeMuscleFiberLengthMethods,
+    ComputeMuscleFiberVelocityMethods,
 )
 import numpy as np
 import pytest
@@ -21,10 +20,10 @@ model_path = (
 
 def test_muscle_biorbd_model_wrong_constructor():
     with pytest.raises(ValueError, match="Muscle Wrong muscle was not found in the biorbd model"):
-        MuscleBiorbdModel(
+        RigidbodyModels.WithMuscles(
             model_path,
             muscles=[
-                MuscleHillModelRigidTendon(
+                MuscleHillModels.RigidTendon(
                     name="Wrong muscle",
                     maximal_force=500,
                     optimal_length=0.1,
@@ -36,10 +35,10 @@ def test_muscle_biorbd_model_wrong_constructor():
 
 
 def test_muscle_biorbd_model_number_of_muscles():
-    model = MuscleBiorbdModel(
+    model = RigidbodyModels.WithMuscles(
         model_path,
         muscles=[
-            MuscleHillModelRigidTendon(
+            MuscleHillModels.RigidTendon(
                 name="Mus1", maximal_force=500, optimal_length=0.1, tendon_slack_length=0.123, maximal_velocity=5.0
             )
         ],
@@ -47,15 +46,15 @@ def test_muscle_biorbd_model_number_of_muscles():
     assert model.nb_muscles == 1
 
     # Can load a model with less muscles
-    model_none = MuscleBiorbdModel(model_path, muscles=[])
+    model_none = RigidbodyModels.WithMuscles(model_path, muscles=[])
     assert model_none.nb_muscles == 0
 
 
 def test_get_mx_variables():
-    model = MuscleBiorbdModel(
+    model = RigidbodyModels.WithMuscles(
         model_path,
         muscles=[
-            MuscleHillModelRigidTendon(
+            MuscleHillModels.RigidTendon(
                 name="Mus1", maximal_force=500, optimal_length=0.1, tendon_slack_length=0.123, maximal_velocity=5.0
             )
         ],
@@ -76,20 +75,22 @@ def test_muscle_biorbd_model_get_mx_variables():
     dummy_params = {"maximal_force": 500, "optimal_length": 0.1, "tendon_slack_length": 0.123, "maximal_velocity": 5.0}
     muscle_fiber_length_mx = MX.sym("dummy", 1, 1)
     muscle_fiber_velocity_mx = MX.sym("dummy", 1, 1)
-    model = MuscleBiorbdModel(
+    model = RigidbodyModels.WithMuscles(
         model_path,
         muscles=[
-            MuscleHillModelRigidTendon(name="Mus1", **dummy_params),
-            MuscleHillModelRigidTendon(name="Mus1", **dummy_params),
-            MuscleHillModelFlexibleTendonAlwaysPositive(
+            MuscleHillModels.RigidTendon(name="Mus1", **dummy_params),
+            MuscleHillModels.RigidTendon(name="Mus1", **dummy_params),
+            MuscleHillModels.FlexibleTendonAlwaysPositive(
                 name="Mus1",
-                compute_muscle_fiber_length=ComputeMuscleFiberLengthAsVariable(mx_symbolic=muscle_fiber_length_mx),
-                compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityFlexibleTendonImplicit(
+                compute_muscle_fiber_length=ComputeMuscleFiberLengthMethods.AsVariable(
+                    mx_symbolic=muscle_fiber_length_mx
+                ),
+                compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityMethods.FlexibleTendonImplicit(
                     mx_symbolic=muscle_fiber_velocity_mx
                 ),
                 **dummy_params
             ),
-            MuscleHillModelFlexibleTendonAlwaysPositive(name="Mus1", **dummy_params),
+            MuscleHillModels.FlexibleTendonAlwaysPositive(name="Mus1", **dummy_params),
         ],
     )
 
@@ -121,10 +122,10 @@ def test_muscle_biorbd_model_get_mx_variables():
 
 
 def test_muscle_tendon_lengths():
-    rigid = MuscleHillModelRigidTendon
-    flexible = MuscleHillModelFlexibleTendonAlwaysPositive
+    rigid = MuscleHillModels.RigidTendon
+    flexible = MuscleHillModels.FlexibleTendonAlwaysPositive
 
-    model = MuscleBiorbdModel(
+    model = RigidbodyModels.WithMuscles(
         model_path,
         muscles=[
             rigid("Mus1", maximal_force=500, optimal_length=0.10, tendon_slack_length=0.123, maximal_velocity=5.0),
@@ -142,10 +143,10 @@ def test_muscle_tendon_lengths():
 
 
 def test_muscle_biorbd_model_muscle_tendon_length_jacobian():
-    rigid = MuscleHillModelRigidTendon
-    flexible = MuscleHillModelFlexibleTendonAlwaysPositive
+    rigid = MuscleHillModels.RigidTendon
+    flexible = MuscleHillModels.FlexibleTendonAlwaysPositive
 
-    model = MuscleBiorbdModel(
+    model = RigidbodyModels.WithMuscles(
         model_path,
         muscles=[
             rigid("Mus1", maximal_force=500, optimal_length=0.10, tendon_slack_length=0.123, maximal_velocity=5.0),
@@ -163,7 +164,7 @@ def test_muscle_biorbd_model_muscle_tendon_length_jacobian():
 
 
 def test_muscle_biorbd_model_muscle_jacobian():
-    model_none = MuscleBiorbdModel(model_path, muscles=[])
+    model_none = RigidbodyModels.WithMuscles(model_path, muscles=[])
 
     # Do not allow to call muscle_length_jacobian directly
     with pytest.raises(
@@ -177,10 +178,10 @@ def test_muscle_biorbd_model_muscle_jacobian():
 
 
 def test_tendon_lengths():
-    rigid = MuscleHillModelRigidTendon
-    flexible = MuscleHillModelFlexibleTendonAlwaysPositive
+    rigid = MuscleHillModels.RigidTendon
+    flexible = MuscleHillModels.FlexibleTendonAlwaysPositive
 
-    model = MuscleBiorbdModel(
+    model = RigidbodyModels.WithMuscles(
         model_path,
         muscles=[
             rigid("Mus1", maximal_force=500, optimal_length=0.10, tendon_slack_length=0.123, maximal_velocity=5.0),
@@ -207,10 +208,10 @@ def test_tendon_lengths():
 
 
 def test_tendon_forces():
-    rigid = MuscleHillModelRigidTendon
-    flexible = MuscleHillModelFlexibleTendonAlwaysPositive
+    rigid = MuscleHillModels.RigidTendon
+    flexible = MuscleHillModels.FlexibleTendonAlwaysPositive
 
-    model = MuscleBiorbdModel(
+    model = RigidbodyModels.WithMuscles(
         model_path,
         muscles=[
             rigid("Mus1", maximal_force=500, optimal_length=0.10, tendon_slack_length=0.123, maximal_velocity=5.0),
@@ -236,10 +237,10 @@ def test_tendon_forces():
 
 
 def test_muscle_biorbd_model_muscle_fiber_lengths():
-    rigid = MuscleHillModelRigidTendon
-    flexible = MuscleHillModelFlexibleTendonAlwaysPositive
+    rigid = MuscleHillModels.RigidTendon
+    flexible = MuscleHillModels.FlexibleTendonAlwaysPositive
 
-    model = MuscleBiorbdModel(
+    model = RigidbodyModels.WithMuscles(
         model_path,
         muscles=[
             rigid("Mus1", maximal_force=500, optimal_length=0.10, tendon_slack_length=0.123, maximal_velocity=5.0),
@@ -265,10 +266,10 @@ def test_muscle_biorbd_model_muscle_fiber_lengths():
 
 
 def test_muscle_biorbd_model_muscle_fiber_lengths_equilibrated():
-    rigid = MuscleHillModelRigidTendon
-    flexible = MuscleHillModelFlexibleTendonAlwaysPositive
+    rigid = MuscleHillModels.RigidTendon
+    flexible = MuscleHillModels.FlexibleTendonAlwaysPositive
 
-    model = MuscleBiorbdModel(
+    model = RigidbodyModels.WithMuscles(
         model_path,
         muscles=[
             rigid("Mus1", maximal_force=500, optimal_length=0.10, tendon_slack_length=0.123, maximal_velocity=5.0),
@@ -294,10 +295,10 @@ def test_muscle_biorbd_model_muscle_fiber_lengths_equilibrated():
 
 
 def test_muscle_biorbd_model_muscle_fiber_velocities():
-    rigid = MuscleHillModelRigidTendon
-    flexible = MuscleHillModelFlexibleTendonAlwaysPositive
+    rigid = MuscleHillModels.RigidTendon
+    flexible = MuscleHillModels.FlexibleTendonAlwaysPositive
 
-    model = MuscleBiorbdModel(
+    model = RigidbodyModels.WithMuscles(
         model_path,
         muscles=[
             rigid("Mus1", maximal_force=500, optimal_length=0.10, tendon_slack_length=0.123, maximal_velocity=5.0),
@@ -342,10 +343,10 @@ def test_muscle_biorbd_model_muscle_fiber_velocities():
 
 
 def test_muscle_biorbd_model_muscle_forces():
-    rigid = MuscleHillModelRigidTendon
-    flexible = MuscleHillModelFlexibleTendonAlwaysPositive
+    rigid = MuscleHillModels.RigidTendon
+    flexible = MuscleHillModels.FlexibleTendonAlwaysPositive
 
-    model = MuscleBiorbdModel(
+    model = RigidbodyModels.WithMuscles(
         model_path,
         muscles=[
             rigid("Mus1", maximal_force=500, optimal_length=0.10, tendon_slack_length=0.123, maximal_velocity=5.0),
@@ -380,10 +381,10 @@ def test_muscle_biorbd_model_muscle_forces():
 
 
 def test_muscle_biorbd_model_muscle_joint_torque():
-    rigid = MuscleHillModelRigidTendon
-    flexible = MuscleHillModelFlexibleTendonAlwaysPositive
+    rigid = MuscleHillModels.RigidTendon
+    flexible = MuscleHillModels.FlexibleTendonAlwaysPositive
 
-    model = MuscleBiorbdModel(
+    model = RigidbodyModels.WithMuscles(
         model_path,
         muscles=[
             rigid("Mus1", maximal_force=500, optimal_length=0.10, tendon_slack_length=0.123, maximal_velocity=5.0),
@@ -415,10 +416,10 @@ def test_muscle_biorbd_model_muscle_joint_torque():
 
 
 def test_muscle_biorbd_model_casadi_function_interface():
-    model = MuscleBiorbdModel(
+    model = RigidbodyModels.WithMuscles(
         model_path,
         muscles=[
-            MuscleHillModelRigidTendon(
+            MuscleHillModels.RigidTendon(
                 name="Mus1", maximal_force=500, optimal_length=0.1, tendon_slack_length=0.123, maximal_velocity=5.0
             )
         ],

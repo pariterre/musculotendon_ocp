@@ -1,10 +1,16 @@
+from enum import Enum
 from functools import cached_property
 
 import biorbd_casadi as biorbd
 from casadi import MX, Function, rootfinder, symvar
 
-from .muscle_hill_model_abstract import MuscleHillModelAbstract
+from .muscle_hill_model_abstract import MuscleHillModelAbstract, ComputeMuscleFiberVelocity
 from .compute_muscle_fiber_length import ComputeMuscleFiberLengthRigidTendon
+
+
+"""
+Implementations of th ComputeMuscleFiberVelocity protocol
+"""
 
 
 class ComputeMuscleFiberVelocityAsVariable:
@@ -192,3 +198,49 @@ class ComputeMuscleFiberVelocityFlexibleTendonExplicit(ComputeMuscleFiberVelocit
         )
 
         return newton_method(i0=0, i1=muscle_fiber_length, i2=activation, i3=q)["o0"]
+
+
+class ComputeMuscleFiberVelocityFlexibleTendonLinearized(ComputeMuscleFiberVelocityAsVariable):
+    """
+    Compute the muscle fiber velocity by approximating the force-velocity relationship with a linear function.
+    """
+
+    def __call__(
+        self,
+        muscle: MuscleHillModelAbstract,
+        model_kinematic_updated: biorbd.Model,
+        biorbd_muscle: biorbd.Muscle,
+        activation: MX,
+        q: MX,
+        qdot: MX,
+        muscle_fiber_length: MX,
+    ) -> biorbd.MX:
+        if isinstance(muscle.compute_muscle_fiber_length, ComputeMuscleFiberLengthRigidTendon):
+            raise ValueError("The compute_muscle_fiber_length must not be a ComputeMuscleFiberLengthRigidTendon")
+
+        # Alias for the MX variables
+        muscle_fiber_velocity_mx = self.mx_variable
+
+        # Compute necessary variables
+        biorbd_muscle.updateOrientations(model_kinematic_updated, q)
+        muscle_tendon_length = biorbd_muscle.musculoTendonLength(model_kinematic_updated, q).to_mx()
+        tendon_length = muscle.compute_tendon_length(muscle_tendon_length, muscle_fiber_length)
+
+        # Get the muscle and velocity
+        muscle_velocity = muscle.compute_muscle_fiber_velocity_from_linear_approximation(
+            activation=activation,
+            muscle_fiber_length=muscle_fiber_length,
+            muscle_fiber_velocity=muscle_fiber_velocity_mx,
+            tendon_length=tendon_length,
+        )
+
+        return muscle_velocity
+
+
+class ComputeMuscleFiberVelocityMethods(Enum):
+    RigidTendon = ComputeMuscleFiberVelocityRigidTendon
+    FlexibleTendonImplicit = ComputeMuscleFiberVelocityFlexibleTendonImplicit
+    FlexibleTendonExplicit = ComputeMuscleFiberVelocityFlexibleTendonExplicit
+
+    def __call__(self, *args, **kwargs) -> ComputeMuscleFiberVelocity:
+        return self.value(*args, **kwargs)

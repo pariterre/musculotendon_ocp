@@ -3,12 +3,12 @@ from typing import Callable
 
 from casadi import MX
 from matplotlib import pyplot as plt
-from musculotendon_ocp import MuscleBiorbdModel, MuscleHillModelRigidTendon
+from musculotendon_ocp import RigidbodyModelWithMuscles, RigidbodyModels, MuscleHillModels
 import numpy as np
 from scipy.integrate import solve_ivp
 
 
-def compute_muscle_lengths(model: MuscleBiorbdModel, all_q: np.ndarray) -> list[np.ndarray]:
+def compute_muscle_lengths(model: RigidbodyModelWithMuscles, all_q: np.ndarray) -> list[np.ndarray]:
     func = model.to_casadi_function(model.muscle_fiber_lengths, "activations", "q", "qdot")
     values = [func(q=q)["output"] for q in all_q.T]
 
@@ -25,7 +25,9 @@ def muscle_fiber_velocity_from_finitediff(lengths: np.ndarray, t: np.ndarray) ->
     return finitediff
 
 
-def compute_muscle_fiber_velocities(model: MuscleBiorbdModel, all_q: np.ndarray, all_qdot: np.ndarray) -> np.ndarray:
+def compute_muscle_fiber_velocities(
+    model: RigidbodyModelWithMuscles, all_q: np.ndarray, all_qdot: np.ndarray
+) -> np.ndarray:
     velocities = [np.ndarray(len(all_q.T)) for _ in range(model.nb_muscles)]
 
     muscle_tendon_length_jacobian_func = model.to_casadi_function(model.muscle_tendon_length_jacobian, "q")
@@ -39,7 +41,7 @@ def compute_muscle_fiber_velocities(model: MuscleBiorbdModel, all_q: np.ndarray,
     return velocities
 
 
-def dynamics(_, x, dynamics_func: Callable, model: MuscleBiorbdModel, activations: np.ndarray) -> np.ndarray:
+def dynamics(_, x, dynamics_func: Callable, model: RigidbodyModelWithMuscles, activations: np.ndarray) -> np.ndarray:
     q = x[: model.nb_q]
     qdot = x[model.nb_q :]
 
@@ -48,17 +50,17 @@ def dynamics(_, x, dynamics_func: Callable, model: MuscleBiorbdModel, activation
     return np.concatenate((qdot, qddot))
 
 
-def qddot_from_muscles(model: MuscleBiorbdModel, activations: MX, q: MX, qdot: MX) -> MX:
+def qddot_from_muscles(model: RigidbodyModelWithMuscles, activations: MX, q: MX, qdot: MX) -> MX:
     muscle_fiber_lengths = model.muscle_fiber_lengths(activations, q, qdot)
     tau = model.muscle_joint_torque(activations, q, qdot, muscle_fiber_lengths)
     return model.forward_dynamics(q, qdot, tau)
 
 
 def main():
-    model = MuscleBiorbdModel(
+    model = RigidbodyModels.WithMuscles(
         "musculotendon_ocp/rigidbody_models/models/one_muscle_holding_a_cube.bioMod",
         muscles=[
-            MuscleHillModelRigidTendon(
+            MuscleHillModels.RigidTendon(
                 name="Mus1", maximal_force=500, optimal_length=0.1, tendon_slack_length=0.16, maximal_velocity=5.0
             ),
         ],

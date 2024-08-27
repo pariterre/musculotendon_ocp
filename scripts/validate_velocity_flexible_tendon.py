@@ -4,18 +4,18 @@ from typing import Callable
 from casadi import MX
 from matplotlib import pyplot as plt
 from musculotendon_ocp import (
-    MuscleBiorbdModel,
-    MuscleHillModelFlexibleTendon,
-    ComputeMuscleFiberLengthAsVariable,
-    ComputeMuscleFiberVelocityFlexibleTendonImplicit,
-    ComputeMuscleFiberVelocityFlexibleTendonExplicit,
-    ComputeForceDampingLinear,
+    RigidbodyModelWithMuscles,
+    RigidbodyModels,
+    MuscleHillModels,
+    ComputeForceDampingMethods,
+    ComputeMuscleFiberLengthMethods,
+    ComputeMuscleFiberVelocityMethods,
 )
 import numpy as np
 from scipy.integrate import solve_ivp
 
 
-def compute_muscle_lengths(model: MuscleBiorbdModel, all_muscle_fiber_lengths: np.ndarray) -> list[np.ndarray]:
+def compute_muscle_lengths(model: RigidbodyModelWithMuscles, all_muscle_fiber_lengths: np.ndarray) -> list[np.ndarray]:
     # Dispatch so the outer list is the muscles and the inner list is the time points (opposite of the current structure)
     out = [None] * model.nb_muscles
     for i in range(model.nb_muscles):
@@ -30,7 +30,7 @@ def compute_finitediff(array: np.ndarray, t: np.ndarray) -> np.ndarray:
 
 
 def compute_muscle_fiber_velocities(
-    model: MuscleBiorbdModel,
+    model: RigidbodyModelWithMuscles,
     activations: np.ndarray,
     all_muscle_lengths: np.ndarray,
     all_q: np.ndarray,
@@ -58,7 +58,9 @@ def compute_muscle_fiber_velocities(
 last_computed_lmdot = [np.array([0])]
 
 
-def dynamics(_, x, dynamics_functions: list[Callable], model: MuscleBiorbdModel, activations: np.ndarray) -> np.ndarray:
+def dynamics(
+    _, x, dynamics_functions: list[Callable], model: RigidbodyModelWithMuscles, activations: np.ndarray
+) -> np.ndarray:
     muscle_fiber_lmdot_func, forward_dynamics_func = dynamics_functions
 
     fiber_lengths = x[: model.nb_muscles]
@@ -85,36 +87,32 @@ def dynamics(_, x, dynamics_functions: list[Callable], model: MuscleBiorbdModel,
     return np.concatenate((fiber_lengths_dot, qdot, qddot))
 
 
-def prepare_muscle_fiber_velocities(model: MuscleBiorbdModel, activations: MX, q: MX, qdot: MX) -> MX:
+def prepare_muscle_fiber_velocities(model: RigidbodyModelWithMuscles, activations: MX, q: MX, qdot: MX) -> MX:
     muscle_fiber_velocities = model.muscle_fiber_velocities(
         activations=activations, q=q, qdot=qdot, muscle_fiber_lengths=model.muscle_fiber_lengths_mx
     )
     return muscle_fiber_velocities
 
 
-def prepare_forward_dynamics(model: MuscleBiorbdModel, activations: MX, q: MX, qdot: MX) -> MX:
+def prepare_forward_dynamics(model: RigidbodyModelWithMuscles, activations: MX, q: MX, qdot: MX) -> MX:
     tau = model.muscle_joint_torque(activations, q, qdot, muscle_fiber_lengths=model.muscle_fiber_lengths_mx)
     qddot = model.forward_dynamics(q, qdot, tau)
     return qddot
 
 
-def main(use_implicit_velocity_computation: bool = False):
-    model = MuscleBiorbdModel(
+def main(compute_muscle_fiber_velocity_method: ComputeMuscleFiberVelocityMethods):
+    model = RigidbodyModels.WithMuscles(
         "musculotendon_ocp/rigidbody_models/models/one_muscle_holding_a_cube.bioMod",
         muscles=[
-            MuscleHillModelFlexibleTendon(
+            MuscleHillModels.FlexibleTendon(
                 name="Mus1",
                 maximal_force=1000,
                 optimal_length=0.1,
                 tendon_slack_length=0.16,
-                compute_force_damping=ComputeForceDampingLinear(factor=0.1),
+                compute_force_damping=ComputeForceDampingMethods.Linear(factor=0.1),
                 maximal_velocity=5.0,
-                compute_muscle_fiber_length=ComputeMuscleFiberLengthAsVariable(),
-                compute_muscle_fiber_velocity=(
-                    ComputeMuscleFiberVelocityFlexibleTendonImplicit()
-                    if use_implicit_velocity_computation
-                    else ComputeMuscleFiberVelocityFlexibleTendonExplicit()
-                ),
+                compute_muscle_fiber_length=ComputeMuscleFiberLengthMethods.InstantaneousEquilibrium(),
+                compute_muscle_fiber_velocity=compute_muscle_fiber_velocity_method(),
             ),
         ],
     )
@@ -196,4 +194,4 @@ def main(use_implicit_velocity_computation: bool = False):
 
 
 if __name__ == "__main__":
-    main()
+    main(compute_muscle_fiber_velocity_method=ComputeMuscleFiberVelocityMethods.FlexibleTendonImplicit)

@@ -1,9 +1,16 @@
-from musculotendon_ocp import ComputeForceVelocityHillType
+from musculotendon_ocp import ComputeForceVelocityMethods
 from numpy.testing import assert_almost_equal
 
 
+def test_compute_force_velocity_methods():
+    assert len(ComputeForceVelocityMethods) == 1
+
+    hill_type = ComputeForceVelocityMethods.HillType()
+    assert type(hill_type) == ComputeForceVelocityMethods.HillType.value
+
+
 def test_compute_force_velocity_hill_type():
-    force_velocity_model = ComputeForceVelocityHillType()
+    force_velocity_model = ComputeForceVelocityMethods.HillType()
 
     assert force_velocity_model.d1 == -0.318
     assert force_velocity_model.d2 == -8.149
@@ -23,7 +30,18 @@ def test_compute_force_velocity_hill_type():
     assert_almost_equal(force_velocity_model(normalized_muscle_fiber_velocity=-1.0), 0.012081678112282557)
     assert_almost_equal(force_velocity_model(normalized_muscle_fiber_velocity=-2.0), -0.21490297384011525)
 
+    # Inverse function
+    assert_almost_equal(force_velocity_model.inverse(-1.0), -23.14440612299026)
+    assert_almost_equal(force_velocity_model.inverse(0.0), -1.0372450842799263)
+    assert_almost_equal(force_velocity_model.inverse(1.0), -0.0009548832444486917)
+
+    # Compute linear approximation coefficients
+    # assert_almost_equal(force_velocity_model.derivative(0.0), (3.211871760165812, 1.002320622548512))
+
     # Test values based on qualitative behavior (increasing S-shaped function)
     assert force_velocity_model(0.0) < force_velocity_model(0.5)
     assert force_velocity_model(-0.5) < force_velocity_model(0.0)
     assert force_velocity_model(-2.0) < 0.0
+
+    assert force_velocity_model.inverse(-1.0) < force_velocity_model.inverse(0.0)
+    assert force_velocity_model.inverse(0.0) < force_velocity_model.inverse(1.0)

@@ -1,8 +1,8 @@
 from functools import cached_property
 from typing import Iterable, Callable, override, Any
 
-import biorbd_casadi as biorbd
 from bioptim import BiorbdModel
+import biorbd_casadi as biorbd
 from casadi import MX, DM, Function, vertcat
 
 from ..muscle_hill_models.muscle_hill_model_abstract import MuscleHillModelAbstract
@@ -14,7 +14,7 @@ from ..muscle_hill_models.compute_muscle_fiber_length import (
 from ..muscle_hill_models.compute_muscle_fiber_velocity import ComputeMuscleFiberVelocityAsVariable
 
 
-class MuscleBiorbdModel(BiorbdModel):
+class RigidbodyModelWithMuscles(BiorbdModel):
     def __init__(self, bio_model: str, muscles: Iterable[MuscleHillModelAbstract], *args, **kwargs):
         super().__init__(bio_model, *args, **kwargs)
 
@@ -115,7 +115,7 @@ class MuscleBiorbdModel(BiorbdModel):
         return vertcat(*out)
 
     def muscle_tendon_length_jacobian(self, q) -> MX:
-        return super(MuscleBiorbdModel, self).muscle_length_jacobian(q)[self._muscle_index_to_biorbd_model, :]
+        return super(RigidbodyModelWithMuscles, self).muscle_length_jacobian(q)[self._muscle_index_to_biorbd_model, :]
 
     @override
     def muscle_length_jacobian(self, q) -> MX:
@@ -354,8 +354,6 @@ class MuscleBiorbdModel(BiorbdModel):
 
         Parameters
         ----------
-        model: MuscleBiorbdModel
-            The model that implements MuscleBiorbdModel.
         mx_function: Callable
             The CasADi MX function to convert to a casadi function.
         keys: Iterable[str]

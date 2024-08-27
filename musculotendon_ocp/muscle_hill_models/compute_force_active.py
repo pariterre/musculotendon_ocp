@@ -1,4 +1,12 @@
+from enum import Enum
+
 from casadi import MX, exp
+
+from .muscle_hill_model_abstract import ComputeForceActive
+
+"""
+Implementations of the ComputeForceActive protocol
+"""
 
 
 class ComputeForceActiveHillType:
@@ -32,19 +40,6 @@ class ComputeForceActiveHillType:
         self.b43 = b43
 
     def __call__(self, normalized_muscle_fiber_length: MX) -> MX:
-        """
-        Compute the normalized force from the passive force-length relationship
-
-        Parameters
-        ----------
-        normalized_muscle_length: MX
-            The normalized muscle length
-
-        Returns
-        -------
-        MX
-            The normalized passive force corresponding to the given muscle length
-        """
 
         length = normalized_muscle_fiber_length  # alias so the next line is not too long
         return (
@@ -52,3 +47,10 @@ class ComputeForceActiveHillType:
             + self.b12 * exp((-0.5) * (length - self.b22) ** 2 / ((self.b32 + self.b42 * length) ** 2))
             + self.b13 * exp((-0.5) * (length - self.b23) ** 2 / ((self.b33 + self.b43 * length) ** 2))
         )
+
+
+class ComputeForceActiveMethods(Enum):
+    HillType = ComputeForceActiveHillType
+
+    def __call__(self, *args, **kwargs) -> ComputeForceActive:
+        return self.value(*args, **kwargs)
