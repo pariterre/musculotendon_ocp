@@ -19,7 +19,7 @@ model_path = (
 
 
 def test_compute_muscle_fiber_velocity_methods():
-    assert len(ComputeMuscleFiberVelocityMethods) == 3
+    assert len(ComputeMuscleFiberVelocityMethods) == 4
 
     rigid_tendon = ComputeMuscleFiberVelocityMethods.RigidTendon()
     assert type(rigid_tendon) == ComputeMuscleFiberVelocityMethods.RigidTendon.value
@@ -29,6 +29,9 @@ def test_compute_muscle_fiber_velocity_methods():
 
     flexible_tendon_explicit = ComputeMuscleFiberVelocityMethods.FlexibleTendonExplicit()
     assert type(flexible_tendon_explicit) == ComputeMuscleFiberVelocityMethods.FlexibleTendonExplicit.value
+
+    flexible_tendon_linearized = ComputeMuscleFiberVelocityMethods.FlexibleTendonLinearized()
+    assert type(flexible_tendon_linearized) == ComputeMuscleFiberVelocityMethods.FlexibleTendonLinearized.value
 
 
 def test_compute_muscle_fiber_velocity_rigid_tendon():
@@ -138,3 +141,39 @@ def test_compute_muscle_fiber_velocity_flexible_tendon_explicit():
     )
 
     np.testing.assert_almost_equal(muscle_fiber_velocity, -5.201202604749881)
+
+
+def test_compute_muscle_fiber_velocity_flexible_tendon_linearized():
+    def evaluate(muscle_fiber_velocity: float):
+        return float(
+            model.function_to_dm(
+                partial(
+                    mus.compute_muscle_fiber_velocity,
+                    muscle=mus,
+                    model_kinematic_updated=model.model.UpdateKinematicsCustom(q),
+                    biorbd_muscle=model.model.muscle(0),
+                    activation=activation,
+                    muscle_fiber_length=np.array([muscle_fiber_velocity]),
+                ),
+                q=q,
+                qdot=qdot,
+            )
+        )
+
+    mus = MuscleHillModels.FlexibleTendonAlwaysPositive(
+        name="Mus1",
+        maximal_force=500,
+        optimal_length=0.1,
+        tendon_slack_length=0.123,
+        maximal_velocity=5.0,
+        compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityMethods.FlexibleTendonLinearized(),
+        compute_force_damping=ComputeForceDampingMethods.Linear(0.1),
+    )
+    model = RigidbodyModels.WithMuscles(model_path, muscles=[mus])
+
+    activation = np.array([0.5])
+    q = np.ones(model.nb_q) * -0.2
+    qdot = np.ones(model.nb_qdot)
+
+    np.testing.assert_almost_equal(evaluate(0.1), -1.9093250424184014)
+    np.testing.assert_almost_equal(evaluate(0.2), -676.3254672085245)

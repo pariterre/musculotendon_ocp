@@ -1,6 +1,6 @@
 from typing import override
 
-from casadi import MX, exp, cos
+from casadi import MX, exp, cos, Function
 
 from .compute_muscle_fiber_length import (
     ComputeMuscleFiberLengthRigidTendon,
@@ -80,6 +80,33 @@ class MuscleHillModelFlexibleTendon(MuscleHillModelRigidTendon):
         computed_normalized_velocity = self.compute_force_velocity.inverse(
             force_velocity_inverse=force_velocity_inverse
         )
+        return self.denormalize_muscle_fiber_velocity(normalized_muscle_fiber_velocity=computed_normalized_velocity)
+
+    @override
+    def compute_muscle_fiber_velocity_from_linear_approximation(
+        self,
+        activation: MX,
+        muscle_fiber_length: MX,
+        muscle_fiber_velocity: MX,
+        tendon_length: MX,
+    ) -> MX:
+        # Compute some normalized values
+        normalized_length = self.normalize_muscle_fiber_length(muscle_fiber_length)
+        normalized_velocity = self.normalize_muscle_fiber_velocity(muscle_fiber_velocity)
+        pennation_angle = self.compute_pennation_angle(muscle_fiber_length)
+
+        # Compute the normalized forces
+        force_passive = self.compute_force_passive(normalized_length)
+        force_active = self.compute_force_active(normalized_length)
+        normalized_tendon_force = self.compute_tendon_force(tendon_length) / self.maximal_force
+
+        derivative = self.compute_force_velocity.derivative(normalized_velocity)
+        slope = derivative
+        bias = -derivative * normalized_velocity + self.compute_force_velocity(normalized_velocity)
+        computed_normalized_velocity = (
+            (normalized_tendon_force / cos(pennation_angle)) - force_passive - bias * activation * force_active
+        ) / (slope * activation * force_active + self.compute_force_damping.factor)
+
         return self.denormalize_muscle_fiber_velocity(normalized_muscle_fiber_velocity=computed_normalized_velocity)
 
     @override

@@ -1,3 +1,4 @@
+from casadi import MX, jacobian, Function
 from musculotendon_ocp import ComputeForceVelocityMethods
 from numpy.testing import assert_almost_equal
 
@@ -36,7 +37,11 @@ def test_compute_force_velocity_hill_type():
     assert_almost_equal(force_velocity_model.inverse(1.0), -0.0009548832444486917)
 
     # Compute linear approximation coefficients
-    # assert_almost_equal(force_velocity_model.derivative(0.0), (3.211871760165812, 1.002320622548512))
+    mx = MX.sym("x", 1, 1)
+    jaco = Function("jacobian", [mx], [jacobian(force_velocity_model(mx), mx)])
+    assert_almost_equal(force_velocity_model.derivative(-1.0), float(jaco(-1.0)))
+    assert_almost_equal(force_velocity_model.derivative(0.0), float(jaco(0.0)))
+    assert_almost_equal(force_velocity_model.derivative(1.0), float(jaco(1.0)))
 
     # Test values based on qualitative behavior (increasing S-shaped function)
     assert force_velocity_model(0.0) < force_velocity_model(0.5)

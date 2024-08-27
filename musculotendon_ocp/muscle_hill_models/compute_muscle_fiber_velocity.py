@@ -119,7 +119,7 @@ class ComputeMuscleFiberVelocityFlexibleTendonImplicit(ComputeMuscleFiberVelocit
             "newton_method",
             "newton",
             equality_constraint,
-            {"error_on_fail": True, "enable_fd": False, "print_in": False, "print_out": False, "max_num_dir": 10},
+            {"error_on_fail": False, "enable_fd": False, "print_in": False, "print_out": False, "max_num_dir": 10},
         )
 
         return newton_method(i0=0, i1=muscle_fiber_length, i2=activation, i3=q)["o0"]
@@ -241,6 +241,7 @@ class ComputeMuscleFiberVelocityMethods(Enum):
     RigidTendon = ComputeMuscleFiberVelocityRigidTendon
     FlexibleTendonImplicit = ComputeMuscleFiberVelocityFlexibleTendonImplicit
     FlexibleTendonExplicit = ComputeMuscleFiberVelocityFlexibleTendonExplicit
+    FlexibleTendonLinearized = ComputeMuscleFiberVelocityFlexibleTendonLinearized
 
     def __call__(self, *args, **kwargs) -> ComputeMuscleFiberVelocity:
         return self.value(*args, **kwargs)

@@ -41,6 +41,16 @@ class DummyMuscleModelAbstract(MuscleHillModelAbstract):
         pass
 
     @override
+    def compute_muscle_fiber_velocity_from_linear_approximation(
+        self,
+        activation: MX,
+        muscle_fiber_length: MX,
+        muscle_fiber_velocity: MX,
+        tendon_length: MX,
+    ) -> MX:
+        pass
+
+    @override
     def compute_tendon_length(self, muscle_tendon_length: MX, muscle_fiber_length: MX) -> MX:
         pass
 
