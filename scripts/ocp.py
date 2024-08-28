@@ -15,6 +15,7 @@ from bioptim import (
     InitialGuessList,
     ControlType,
     DynamicsFunctions,
+    Node,
 )
 from casadi import SX, MX, vertcat
 import numpy as np
@@ -30,6 +31,7 @@ from musculotendon_ocp import (
 
 # TODO add a constraint at node zero for the muscle_length (instead of bound) so it adjust to the activations?
 # TODO Implement the second order approximation
+# TODO Contro
 
 
 def prepare_muscle_fiber_velocities(model: RigidbodyModelWithMuscles, activations: MX, q: MX, qdot: MX) -> MX:
@@ -180,7 +182,7 @@ def prepare_ocp(
     nb_muscles = model.nb_muscles
     # Without damping, there is a singularity if the activation is 0. So it needs to be > (0 + eps) where eps is a
     # neighborhood of 0 and depends on the muscle, it can be very small or not
-    activation_min, activation_max = 0.0, 1.0
+    activation_min, activation_max = 0.2, 1.0
 
     activations_min = np.array([activation_min] * nb_muscles)
     activations_max = np.array([activation_max] * nb_muscles)
@@ -207,12 +209,13 @@ def prepare_ocp(
 
     # Minimize the muscle activation
     objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_CONTROL, key="muscles", weight=50)
+    objective_functions.add(ObjectiveFcn.Mayer.MINIMIZE_CONTROL, key="muscles", weight=50, node=Node.END)
 
     # Start and end at a specific position, at rest, and make sure the model is constraint the requested bounds
     x_bounds.add("q", model.bounds_from_ranges("q"))
     x_bounds.add("qdot", model.bounds_from_ranges("qdot"))
     x_bounds["q"][:, 0] = q0
-    # x_bounds["q"][:, -1] = qf
+    x_bounds["q"][:, -1] = qf
     x_bounds["qdot"][0, [0, -1]] = 0
     x_init["q"] = q0
 
@@ -261,8 +264,8 @@ def main():
     ocp = prepare_ocp(
         model=model,
         final_time=1.0,
-        q0=np.array([-0.24]),
-        qf=np.array([-0.24]),
+        q0=np.array([-0.22]),
+        qf=np.array([-0.25]),
         ode_solver=OdeSolver.RK4(),
     )
 
