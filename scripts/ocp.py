@@ -28,6 +28,9 @@ from musculotendon_ocp import (
 )
 
 
+# TODO add a constraint at node zero for the muscle_length (instead of bound) so it adjust to the activations?
+
+
 def prepare_muscle_fiber_velocities(model: RigidbodyModelWithMuscles, activations: MX, q: MX, qdot: MX) -> MX:
     muscle_fiber_velocities = model.muscle_fiber_velocities(
         activations=activations, q=q, qdot=qdot, muscle_fiber_lengths=model.muscle_fiber_lengths_mx
@@ -123,12 +126,7 @@ def custom_configure(ocp: OptimalControlProgram, nlp: NonLinearProgram, numerica
     # States
     ConfigureProblem.configure_q(ocp, nlp, as_states=True, as_controls=False)
     ConfigureProblem.configure_qdot(ocp, nlp, as_states=True, as_controls=False)
-
-    # Declare mx variables and replace the ones in the model by the one provided by ConfigureProblem
     ConfigureProblem.configure_muscles(ocp, nlp, as_states=True, as_controls=False)
-    # model: RigidbodyModelWithMuscles = nlp.model
-    # for muscle, mx in zip(model.muscles, vertsplit(nlp.states["muscles"].mx)):
-    #     muscle.compute_muscle_fiber_length.mx_variable = mx
 
     # Control
     ConfigureProblem.configure_muscles(ocp, nlp, as_states=False, as_controls=True)
@@ -215,6 +213,7 @@ def prepare_ocp(
     x_bounds["q"][:, 0] = q0
     x_bounds["q"][:, -1] = qf
     x_bounds["qdot"][0, [0, -1]] = 0
+    x_init["q"] = q0
 
     # Muscle lengths are stricly positive and start with muscle fiber lengths at equilibrium
     x_bounds["muscles"] = [0] * nb_muscles, [np.inf] * nb_muscles
@@ -261,8 +260,8 @@ def main():
     ocp = prepare_ocp(
         model=model,
         final_time=1.0,
-        q0=np.array([0.24]),
-        qf=np.array([0.24]),
+        q0=np.array([-0.24]),
+        qf=np.array([-0.24]),
         ode_solver=OdeSolver.RK4(),
     )
 

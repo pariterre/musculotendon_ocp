@@ -8,3 +8,4 @@ dependencies:
 - matplotlib
 - scipy
 - pytest
+- pyomeca>=2024.0.0

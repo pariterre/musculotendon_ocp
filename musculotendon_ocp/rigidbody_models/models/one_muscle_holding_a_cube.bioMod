@@ -5,12 +5,21 @@ gravity 0 0 -9.81
 segment Global
 endsegment
 
+variables
+  $cube_mass   10
+endvariables
+
 
 // Insertion
 segment Cube
     parent Global
     translations z
-    mass 10
+    mass $cube_mass
+    
+    inertia
+    5/3*$cube_mass*$cube_mass 0 0
+    0 5/3*$cube_mass*$cube_mass 0
+    0 0 5/3*$cube_mass*$cube_mass
 
     mesh -0.15 -0.15 0
     mesh -0.15 0.15 0
