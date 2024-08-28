@@ -4,7 +4,7 @@ from typing import Callable
 from casadi import MX
 from matplotlib import pyplot as plt
 from musculotendon_ocp import RigidbodyModelWithMuscles, RigidbodyModels, MuscleHillModels
-from musculotendon_ocp.misc import compute_finitediff, precise_rk45
+from musculotendon_ocp.math import compute_finitediff, precise_rk45
 import numpy as np
 
 

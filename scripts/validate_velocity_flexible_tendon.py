@@ -12,7 +12,7 @@ from musculotendon_ocp import (
     ComputeMuscleFiberLengthMethods,
     ComputeMuscleFiberVelocityMethods,
 )
-from musculotendon_ocp.misc import compute_finitediff, precise_rk45
+from musculotendon_ocp.math import compute_finitediff, precise_rk45, precise_rk4
 import numpy as np
 
 
@@ -101,7 +101,10 @@ def prepare_forward_dynamics(model: RigidbodyModelWithMuscles, activations: MX, 
 
 
 def main(
-    compute_muscle_fiber_velocity_method: ComputeMuscleFiberVelocityMethods, color: str = "k", skip_graphs: bool = False
+    compute_muscle_fiber_velocity_method: ComputeMuscleFiberVelocityMethods,
+    integration_method: Callable = precise_rk45,
+    skip_graphs: bool = False,
+    color: str = "k",
 ) -> None:
     model = RigidbodyModels.WithMuscles(
         "musculotendon_ocp/rigidbody_models/models/one_muscle_holding_a_cube.bioMod",
@@ -218,8 +221,8 @@ def time_main(methods: list[ComputeMuscleFiberVelocityMethods], repeat: int) -> 
         print(f"Timing the script using {method}")
         timings[method] = (
             timeit.timeit(
-                f"main(compute_muscle_fiber_velocity_method={method}, skip_graphs=True)",
-                setup="from __main__ import main, ComputeMuscleFiberVelocityMethods",
+                f"main(compute_muscle_fiber_velocity_method={method}, skip_graphs=True, integration_method=precise_rk4)",
+                setup="from __main__ import main, ComputeMuscleFiberVelocityMethods, precise_rk4",
                 number=repeat,
             )
             / repeat
@@ -232,22 +235,31 @@ def time_main(methods: list[ComputeMuscleFiberVelocityMethods], repeat: int) -> 
 if __name__ == "__main__":
     print("Preparing the plots")
     # Implicit sometime fails for no apparent reason, so it needs "error_on_fail" to be set to False
-    main(compute_muscle_fiber_velocity_method=ComputeMuscleFiberVelocityMethods.FlexibleTendonLinearized(), color="b")
+    main(
+        compute_muscle_fiber_velocity_method=ComputeMuscleFiberVelocityMethods.FlexibleTendonLinearized(),
+        color="r",
+        integration_method=precise_rk45,
+    )
+    main(
+        compute_muscle_fiber_velocity_method=ComputeMuscleFiberVelocityMethods.FlexibleTendonLinearized(),
+        color="#FFA500",
+        integration_method=precise_rk4,
+    )
     main(
         compute_muscle_fiber_velocity_method=ComputeMuscleFiberVelocityMethods.FlexibleTendonImplicit(
             error_on_fail=True
         ),
-        color="r",
+        color="g",
     )
-    main(compute_muscle_fiber_velocity_method=ComputeMuscleFiberVelocityMethods.FlexibleTendonExplicit(), color="g")
+    main(compute_muscle_fiber_velocity_method=ComputeMuscleFiberVelocityMethods.FlexibleTendonExplicit(), color="b")
 
     repeat = 20
     print("Timing the script, each method will be repeated 20 times. This may take a while")
     timings = time_main(
         [
-            # "ComputeMuscleFiberVelocityMethods.FlexibleTendonImplicit(error_on_fail=False)",
-            # "ComputeMuscleFiberVelocityMethods.FlexibleTendonExplicit()",
-            # "ComputeMuscleFiberVelocityMethods.FlexibleTendonLinearized()",
+            "ComputeMuscleFiberVelocityMethods.FlexibleTendonImplicit(error_on_fail=False)",
+            "ComputeMuscleFiberVelocityMethods.FlexibleTendonExplicit()",
+            "ComputeMuscleFiberVelocityMethods.FlexibleTendonLinearized()",
         ],
         repeat=repeat,
     )
