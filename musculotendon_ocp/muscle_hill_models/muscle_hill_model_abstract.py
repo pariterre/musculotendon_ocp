@@ -91,6 +91,25 @@ class ComputeForceVelocity(Protocol):
             as f = a * v + b
         """
 
+    def second_derivative(self, normalized_muscle_fiber_velocity: MX) -> tuple[MX, MX]:
+        """
+        # TODO Fix the docstring
+        Computation of the linear approximation coefficients of muscle velocity force to approximate with a second order
+        Taylor expansion the force-velocity relationship at a given normalized_muscle_fiber_velocity.
+
+        Parameters
+        ----------
+        normalized_muscle_fiber_velocity: MX
+            The normalized muscle velocity
+
+        Returns
+        -------
+        tuple[MX, MX, MX]
+            The second order approximation coefficient (d, e, f) such that the force-velocity relationship can be
+            approximated as f(v) = d * v^2 + e * v + f
+
+        """
+
 
 class ComputeForceDamping:
     @property
