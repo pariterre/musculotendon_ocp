@@ -12,8 +12,8 @@ from musculotendon_ocp import (
     ComputeMuscleFiberLengthMethods,
     ComputeMuscleFiberVelocityMethods,
 )
+from musculotendon_ocp.misc import compute_finitediff, precise_rk45
 import numpy as np
-from scipy.integrate import solve_ivp
 
 
 def compute_muscle_lengths(model: RigidbodyModelWithMuscles, all_muscle_fiber_lengths: np.ndarray) -> list[np.ndarray]:
@@ -22,12 +22,6 @@ def compute_muscle_lengths(model: RigidbodyModelWithMuscles, all_muscle_fiber_le
     for i in range(model.nb_muscles):
         out[i] = np.array(all_muscle_fiber_lengths[i, :])
     return out
-
-
-def compute_finitediff(array: np.ndarray, t: np.ndarray) -> np.ndarray:
-    finitediff = np.zeros(len(t))
-    finitediff[1:-1] = (array[2:] - array[:-2]) / (t[2] - t[0])
-    return finitediff
 
 
 def compute_muscle_fiber_velocities(
@@ -78,7 +72,7 @@ def dynamics(
         q=q,
         qdot=qdot,
         muscle_fiber_lengths=fiber_lengths,
-        muscle_fiber_velocities=0,  # if is_linearized else last_computed_lmdot[-1],
+        muscle_fiber_velocities=0 if is_linearized else last_computed_lmdot[-1],
     )["output"].__array__()[:, 0]
     last_computed_lmdot.append(fiber_lengths_dot)
 
@@ -106,7 +100,9 @@ def prepare_forward_dynamics(model: RigidbodyModelWithMuscles, activations: MX, 
     return qddot
 
 
-def main(compute_muscle_fiber_velocity_method: ComputeMuscleFiberVelocityMethods):
+def main(
+    compute_muscle_fiber_velocity_method: ComputeMuscleFiberVelocityMethods, color: str = "k", skip_graphs: bool = False
+) -> None:
     model = RigidbodyModels.WithMuscles(
         "musculotendon_ocp/rigidbody_models/models/one_muscle_holding_a_cube.bioMod",
         muscles=[
@@ -118,22 +114,23 @@ def main(compute_muscle_fiber_velocity_method: ComputeMuscleFiberVelocityMethods
                 compute_force_damping=ComputeForceDampingMethods.Linear(factor=0.1),
                 maximal_velocity=5.0,
                 compute_muscle_fiber_length=ComputeMuscleFiberLengthMethods.InstantaneousEquilibrium(),
-                compute_muscle_fiber_velocity=compute_muscle_fiber_velocity_method(),
+                compute_muscle_fiber_velocity=compute_muscle_fiber_velocity_method,
             ),
         ],
     )
 
-    dt_steps = 0.01
-    n_substeps = 10
-
-    all_t_span = (0, 0.5)
-    t = np.linspace(*all_t_span, 10000)
+    dt = 0.005
+    t_span = (0, 0.5)
+    activations = np.ones(model.nb_muscles) * 0.1
     q = np.ones(model.nb_q) * -0.24
     qdot = np.zeros(model.nb_qdot)
-    activations = np.ones(model.nb_muscles) * 0.6
-    initial_muscle_fiber_length = np.array(
-        model.function_to_dm(model.muscle_fiber_lengths_equilibrated, activations=activations, q=q, qdot=qdot)
-    )[:, 0]
+    initial_muscle_fiber_length = (
+        np.array(
+            model.function_to_dm(model.muscle_fiber_lengths_equilibrated, activations=activations, q=q, qdot=qdot)
+        )[:, 0]
+        + 0.01
+    )
+    y0 = np.concatenate((initial_muscle_fiber_length, q, qdot))
 
     # Request the integration of the equations of motion
     fiber_velocity_func = model.to_casadi_function(
@@ -147,39 +144,9 @@ def main(compute_muscle_fiber_velocity_method: ComputeMuscleFiberVelocityMethods
         dynamics_functions=(fiber_velocity_func, forward_dynamics_func),
         model=model,
         activations=activations,
-        is_linearized=compute_muscle_fiber_velocity_method
-        == ComputeMuscleFiberVelocityMethods.FlexibleTendonLinearized,
+        is_linearized=isinstance(compute_muscle_fiber_velocity_method, ComputeMuscleFiberVelocityMethods),
     )
-
-    time_vector = [np.array([0])]
-    integrated_values = [np.concatenate((initial_muscle_fiber_length, q, qdot)).reshape(-1, 1)]
-    n_steps = int(all_t_span[1] / dt_steps)
-    if n_steps != all_t_span[1] / dt_steps:
-        raise ValueError("The final time should be a multiple of the time step")
-
-    for i in range(n_steps):
-        t_span = (i * dt_steps, (i + 1) * dt_steps)
-
-        time_vector.append(np.linspace(*t_span, n_substeps + 1)[1:])
-        integrated_values.append(
-            solve_ivp(
-                dynamics_functions,
-                t_span,
-                np.concatenate((initial_muscle_fiber_length, q, qdot)),
-                t_eval=time_vector[-1],
-            ).y
-        )
-
-        if integrated_values[-1].shape[1] != n_substeps:
-            raise ValueError("Integration failed")
-
-        initial_muscle_fiber_length = integrated_values[-1][: model.nb_muscles, -1]
-        q = integrated_values[-1][model.nb_muscles : model.nb_muscles + model.nb_q, -1]
-        qdot = integrated_values[-1][model.nb_muscles + model.nb_q :, -1]
-
-    # Concatenate the results
-    t = np.concatenate(time_vector)
-    integrated = np.concatenate(integrated_values, axis=1)
+    t, integrated = precise_rk45(dynamics_functions, y0, t_span, dt)
 
     muscle_fiber_lengths_int = integrated[: model.nb_muscles, :]
     q_int = integrated[model.nb_muscles : model.nb_muscles + model.nb_q, :]
@@ -195,85 +162,96 @@ def main(compute_muscle_fiber_velocity_method: ComputeMuscleFiberVelocityMethods
     )
 
     # If the two methods are equivalent, the plot should be on top of each other
-    plt.figure("Generalized coordinates")
-    for q in q_int:
-        plt.plot(t, q)
-    plt.xlabel("Time (s)")
-    plt.ylabel("Generalized coordinate (rad)")
+    if not skip_graphs:
+        plt.figure("Generalized coordinates")
+        for q in q_int:
+            plt.plot(t, q, color=color)
+        plt.xlabel("Time (s)")
+        plt.ylabel("Generalized coordinate (rad)")
 
-    plt.figure("Generalized velocities")
-    for qdot in qdot_int:
-        plt.plot(t, qdot)
-    plt.xlabel("Time (s)")
-    plt.ylabel("Generalized velocity (rad/s)")
+        plt.figure("Generalized velocities")
+        for qdot in qdot_int:
+            plt.plot(t, qdot, color=color)
+        plt.xlabel("Time (s)")
+        plt.ylabel("Generalized velocity (rad/s)")
 
-    plt.figure("Generalized accelerations")
-    qddot_finitediff = [compute_finitediff(qdot, t) for qdot in qdot_int]
-    for qddot in qddot_finitediff:
-        plt.plot(t, qddot)
-    plt.xlabel("Time (s)")
-    plt.ylabel("Generalized acceleration (rad/s^2)")
+        plt.figure("Generalized accelerations")
+        qddot_finitediff = [compute_finitediff(qdot, t) for qdot in qdot_int]
+        for qddot in qddot_finitediff:
+            plt.plot(t, qddot, color=color, linestyle="--")
+        plt.xlabel("Time (s)")
+        plt.ylabel("Generalized acceleration (rad/s^2)")
 
-    plt.figure("Muscle lengths")
-    for length in muscle_lengths:
-        plt.plot(t, length)
-    plt.xlabel("Time (s)")
-    plt.ylabel("Muscle length (m)")
+        plt.figure("Muscle lengths")
+        for length in muscle_lengths:
+            plt.plot(t, length, color=color)
+        plt.xlabel("Time (s)")
+        plt.ylabel("Muscle length (m)")
 
-    plt.figure("Muscle velocities")
-    for finitediff, computed in zip(muscle_fiber_velocities_finitediff, muscle_fiber_velocities_computed):
-        plt.plot(t, finitediff)
-        plt.plot(t, computed)
-    plt.xlabel("Time (s)")
-    plt.ylabel("Muscle velocity (m/s)")
-    plt.legend([f"Finite diff", f"Computed"])
+        plt.figure("Muscle velocities")
+        for finitediff, computed in zip(muscle_fiber_velocities_finitediff, muscle_fiber_velocities_computed):
+            plt.plot(t, finitediff, color=color, linestyle="--")
+            plt.plot(t, computed, color=color)
+        plt.xlabel("Time (s)")
+        plt.ylabel("Muscle velocity (m/s)")
+        plt.legend([f"Finite diff", f"Computed"])
+
+
+def time_main(methods: list[ComputeMuscleFiberVelocityMethods], repeat: int) -> list[float]:
+    """
+    Time the main function with different methods
+
+    Parameters
+    ----------
+    methods: list[ComputeMuscleFiberVelocityMethods]
+        The methods to time
+    repeat: int
+        The number of repeats
+
+    Returns
+    -------
+    list[float]
+        The timings for each method
+    """
+    timings = {}
+    for method in methods:
+        print(f"Timing the script using {method}")
+        timings[method] = (
+            timeit.timeit(
+                f"main(compute_muscle_fiber_velocity_method={method}, skip_graphs=True)",
+                setup="from __main__ import main, ComputeMuscleFiberVelocityMethods",
+                number=repeat,
+            )
+            / repeat
+        )
+    print("Timings is over")
+
+    return timings
 
 
 if __name__ == "__main__":
-    # Time the running of the script
-
-    repeat = 50
-    print(f"Timing the script with {repeat} repeats")
-
-    print("Timing the script using FlexibleTendonImplicit")
-    implicit_timing = (
-        timeit.timeit(
-            "main(compute_muscle_fiber_velocity_method=ComputeMuscleFiberVelocityMethods.FlexibleTendonImplicit)",
-            setup="from __main__ import main, ComputeMuscleFiberVelocityMethods",
-            number=repeat,
-        )
-        / repeat
+    print("Preparing the plots")
+    # Implicit sometime fails for no apparent reason, so it needs "error_on_fail" to be set to False
+    main(compute_muscle_fiber_velocity_method=ComputeMuscleFiberVelocityMethods.FlexibleTendonLinearized(), color="b")
+    main(
+        compute_muscle_fiber_velocity_method=ComputeMuscleFiberVelocityMethods.FlexibleTendonImplicit(
+            error_on_fail=True
+        ),
+        color="r",
     )
+    main(compute_muscle_fiber_velocity_method=ComputeMuscleFiberVelocityMethods.FlexibleTendonExplicit(), color="g")
 
-    print("Timing the script using FlexibleTendonExplicit")
-    explicit_timing = (
-        timeit.timeit(
-            "main(compute_muscle_fiber_velocity_method=ComputeMuscleFiberVelocityMethods.FlexibleTendonExplicit)",
-            setup="from __main__ import main, ComputeMuscleFiberVelocityMethods",
-            number=repeat,
-        )
-        / repeat
+    repeat = 20
+    print("Timing the script, each method will be repeated 20 times. This may take a while")
+    timings = time_main(
+        [
+            # "ComputeMuscleFiberVelocityMethods.FlexibleTendonImplicit(error_on_fail=False)",
+            # "ComputeMuscleFiberVelocityMethods.FlexibleTendonExplicit()",
+            # "ComputeMuscleFiberVelocityMethods.FlexibleTendonLinearized()",
+        ],
+        repeat=repeat,
     )
-
-    print("Timing the script using FlexibleTendonLinearized")
-    linearized_timing = (
-        timeit.timeit(
-            "main(compute_muscle_fiber_velocity_method=ComputeMuscleFiberVelocityMethods.FlexibleTendonLinearized)",
-            setup="from __main__ import main, ComputeMuscleFiberVelocityMethods",
-            number=repeat,
-        )
-        / repeat
-    )
-    print("Timings is over")
-
-    # Implicit fails, so it needs "error_on_fail" to be set to False
-    print("Showing the plots")
-    main(compute_muscle_fiber_velocity_method=ComputeMuscleFiberVelocityMethods.FlexibleTendonImplicit)
-    main(compute_muscle_fiber_velocity_method=ComputeMuscleFiberVelocityMethods.FlexibleTendonExplicit)
-    main(compute_muscle_fiber_velocity_method=ComputeMuscleFiberVelocityMethods.FlexibleTendonLinearized)
-
-    print(f"Implicit: {implicit_timing:.3f} s")
-    print(f"Explicit: {explicit_timing:.3f} s")
-    print(f"Linearized: {linearized_timing:.3f} s")
+    for timing in timings:
+        print(f"{timing} took {timings[timing]} seconds")
 
     plt.show()

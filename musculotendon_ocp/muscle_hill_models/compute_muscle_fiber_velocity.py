@@ -69,6 +69,22 @@ class ComputeMuscleFiberVelocityFlexibleTendonImplicit(ComputeMuscleFiberVelocit
     Compute the muscle fiber velocity by inverting the force-velocity relationship.
     """
 
+    def __init__(self, mx_symbolic: MX = None, error_on_fail: bool = True) -> None:
+        """
+        Initialize the ComputeMuscleFiberVelocityFlexibleTendonImplicit class.
+
+        Parameters
+        ----------
+        mx_symbolic: MX
+            The symbolic variable representing the muscle fiber velocity.
+        error_on_fail: bool
+            If True, an error is raised if the rootfinder does not converge. Otherwise, the last value is returned.
+            This method turns out to be somewhat unstable and may not converge. This is why the error_on_fail parameter
+            is accessible to be turned off.
+        """
+        super().__init__(mx_symbolic)
+        self.error_on_fail = error_on_fail
+
     def __call__(
         self,
         muscle: MuscleHillModelAbstract,
@@ -119,7 +135,7 @@ class ComputeMuscleFiberVelocityFlexibleTendonImplicit(ComputeMuscleFiberVelocit
             "newton_method",
             "newton",
             equality_constraint,
-            {"error_on_fail": False, "enable_fd": False, "print_in": False, "print_out": False, "max_num_dir": 10},
+            {"error_on_fail": self.error_on_fail},
         )
 
         return newton_method(i0=0, i1=muscle_fiber_length, i2=activation, i3=q)["o0"]
@@ -194,7 +210,7 @@ class ComputeMuscleFiberVelocityFlexibleTendonExplicit(ComputeMuscleFiberVelocit
             "newton_method",
             "newton",
             equality_constraint,
-            {"error_on_fail": True, "enable_fd": False, "print_in": False, "print_out": False, "max_num_dir": 10},
+            {"error_on_fail": True},
         )
 
         return newton_method(i0=0, i1=muscle_fiber_length, i2=activation, i3=q)["o0"]

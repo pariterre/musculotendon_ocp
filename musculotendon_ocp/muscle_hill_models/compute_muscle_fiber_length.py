@@ -111,12 +111,7 @@ class ComputeMuscleFiberLengthInstantaneousEquilibrium(ComputeMuscleFiberLengthA
 
         # Reminder: the first variable of the function is the unknown value that rootfinder tries to optimize.
         # The others are parameters. To have more unknown values to calculate, one needs to use the vertcat function.
-        newton_method = rootfinder(
-            "newton_method",
-            "newton",
-            equality_constraint,
-            {"error_on_fail": True, "enable_fd": False, "print_in": False, "print_out": False, "max_num_dir": 10},
-        )
+        newton_method = rootfinder("newton_method", "newton", equality_constraint, {"error_on_fail": True})
         # Evaluate the muscle fiber length
         return newton_method(i0=0, i1=activation, i2=q)["o0"]
 

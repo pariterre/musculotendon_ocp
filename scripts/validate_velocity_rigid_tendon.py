@@ -4,8 +4,8 @@ from typing import Callable
 from casadi import MX
 from matplotlib import pyplot as plt
 from musculotendon_ocp import RigidbodyModelWithMuscles, RigidbodyModels, MuscleHillModels
+from musculotendon_ocp.misc import compute_finitediff, precise_rk45
 import numpy as np
-from scipy.integrate import solve_ivp
 
 
 def compute_muscle_lengths(model: RigidbodyModelWithMuscles, all_q: np.ndarray) -> list[np.ndarray]:
@@ -17,12 +17,6 @@ def compute_muscle_lengths(model: RigidbodyModelWithMuscles, all_q: np.ndarray) 
     for i in range(model.nb_muscles):
         out[i] = np.array([float(value[i][0]) for value in values])
     return out
-
-
-def muscle_fiber_velocity_from_finitediff(lengths: np.ndarray, t: np.ndarray) -> np.ndarray:
-    finitediff = np.zeros(len(t))
-    finitediff[1:-1] = (lengths[2:] - lengths[:-2]) / (t[2] - t[0])
-    return finitediff
 
 
 def compute_muscle_fiber_velocities(
@@ -66,26 +60,26 @@ def main():
         ],
     )
 
+    dt = 0.005
     t_span = (0, 2.5)
-    t = np.linspace(*t_span, 1000)
     q = np.ones(model.nb_q) * -0.2
     qdot = np.zeros(model.nb_qdot)
     activations = np.ones(model.nb_muscles) * 1.0
 
     # Request the integration of the equations of motion
     dynamics_func = model.to_casadi_function(partial(qddot_from_muscles, model=model), "activations", "q", "qdot")
-    integrated = solve_ivp(
+    t, integrated = precise_rk45(
         partial(dynamics, dynamics_func=dynamics_func, model=model, activations=activations),
-        t_span,
-        np.concatenate((q, qdot)),
-        t_eval=t,
-    ).y
+        y0=np.concatenate((q, qdot)),
+        t_span=t_span,
+        dt=dt,
+    )
     q_int = integrated[: model.nb_q, :]
     qdot_int = integrated[model.nb_q :, :]
 
     # Compute muscle velocities from finite difference as benchmark
     muscle_lengths = compute_muscle_lengths(model, q_int)
-    muscle_fiber_velocities_finitediff = [muscle_fiber_velocity_from_finitediff(length, t) for length in muscle_lengths]
+    muscle_fiber_velocities_finitediff = [compute_finitediff(length, t) for length in muscle_lengths]
 
     # Compute muscle velocities from jacobian
     muscle_fiber_velocities_jacobian = compute_muscle_fiber_velocities(model, q_int, qdot_int)
