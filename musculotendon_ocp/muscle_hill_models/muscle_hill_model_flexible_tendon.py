@@ -1,6 +1,7 @@
 from typing import override
 
-from casadi import MX, exp
+from casadi import MX, exp, cos, Function, sqrt
+from scipy.odr import polynomial
 
 from .compute_muscle_fiber_length import (
     ComputeMuscleFiberLengthRigidTendon,
@@ -55,6 +56,52 @@ class MuscleHillModelFlexibleTendon(MuscleHillModelRigidTendon):
         self.kt = kt
 
     @override
+    def compute_muscle_fiber_velocity_from_second_order_approximation(
+        self,
+        activation: MX,
+        muscle_fiber_velocity: MX,
+        muscle_fiber_length: MX,
+        tendon_length: MX,
+    ) -> MX:
+        # Compute some normalized values
+        normalized_length = self.normalize_muscle_fiber_length(muscle_fiber_length)
+        normalized_velocity = self.normalize_muscle_fiber_velocity(muscle_fiber_velocity)
+        pennation_angle = self.compute_pennation_angle(muscle_fiber_length)
+
+        # Compute the normalized forces
+        force_passive = self.compute_force_passive(normalized_length)
+        force_active = self.compute_force_active(normalized_length)
+        normalized_tendon_force = self.compute_tendon_force(tendon_length) / self.maximal_force
+
+        # Compute the derivatives
+        derivative = self.compute_force_velocity.derivative(normalized_velocity)
+        second_derivative = self.compute_force_velocity.second_derivative(normalized_velocity)
+
+        # Compute the polynomial coefficients of the Taylor expansion at second order of force-velocity relationship
+        biais = (
+            self.compute_force_velocity(normalized_velocity)
+            - derivative * normalized_velocity
+            + second_derivative * normalized_velocity**2 / 2
+        )
+        slope = derivative - second_derivative * normalized_velocity
+        quadratic_coeff = second_derivative / 2
+
+        # Compute the polynomial coefficients of the differential equation of the muscle equilibrium equation
+        polynomial_quadratic_coeff = activation * force_active * quadratic_coeff
+        polynomial_slope = activation * force_active * slope + self.compute_force_damping.factor
+        polynomial_bias = (
+            force_passive - (normalized_tendon_force / cos(pennation_angle)) + biais * activation * force_active
+        )
+
+        # Compute the roots of the polynomial
+        discriminant = polynomial_slope**2 - 4 * polynomial_quadratic_coeff * polynomial_bias
+
+        # We may have to switch from the first root to the second one at some velocity levels, e.g. positive or negative
+        computed_normalized_velocity = (-polynomial_slope + sqrt(discriminant)) / (2 * polynomial_quadratic_coeff)
+        # or computed_normalized_velocity = (-polynomial_slope - sqrt(discriminant)) / (2 * polynomial_quadratic_coeff)
+
+        return self.denormalize_muscle_fiber_velocity(normalized_muscle_fiber_velocity=computed_normalized_velocity)
+
     def normalize_tendon_length(self, tendon_length: MX) -> MX:
         return tendon_length / self.tendon_slack_length
 
