@@ -116,7 +116,7 @@ def main(
                 tendon_slack_length=0.16,
                 compute_force_damping=ComputeForceDampingMethods.Linear(factor=0.1),
                 maximal_velocity=5.0,
-                compute_muscle_fiber_length=ComputeMuscleFiberLengthMethods.InstantaneousEquilibrium(),
+                compute_muscle_fiber_length=ComputeMuscleFiberLengthMethods.AsVariable(),
                 compute_muscle_fiber_velocity=compute_muscle_fiber_velocity_method,
             ),
         ],
@@ -127,12 +127,9 @@ def main(
     activations = np.ones(model.nb_muscles) * 0.1
     q = np.ones(model.nb_q) * -0.24
     qdot = np.zeros(model.nb_qdot)
-    initial_muscle_fiber_length = (
-        np.array(
-            model.function_to_dm(model.muscle_fiber_lengths_equilibrated, activations=activations, q=q, qdot=qdot)
-        )[:, 0]
-        + 0.01
-    )
+    initial_muscle_fiber_length = np.array(
+        model.function_to_dm(model.muscle_fiber_lengths_equilibrated, activations=activations, q=q, qdot=qdot)
+    )[:, 0]
     y0 = np.concatenate((initial_muscle_fiber_length, q, qdot))
 
     # Request the integration of the equations of motion
