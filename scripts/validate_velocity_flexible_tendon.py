@@ -122,7 +122,7 @@ def main(
         ],
     )
 
-    dt = 0.005
+    dt = 0.001 if integration_method == precise_rk4 else 0.005
     t_span = (0, 0.5)
     activations = np.ones(model.nb_muscles) * 0.1
     q = np.ones(model.nb_q) * -0.24
@@ -146,7 +146,7 @@ def main(
         activations=activations,
         is_linearized=isinstance(compute_muscle_fiber_velocity_method, ComputeMuscleFiberVelocityMethods),
     )
-    t, integrated = precise_rk45(dynamics_functions, y0, t_span, dt)
+    t, integrated = integration_method(dynamics_functions, y0, t_span, dt)
 
     muscle_fiber_lengths_int = integrated[: model.nb_muscles, :]
     q_int = integrated[model.nb_muscles : model.nb_muscles + model.nb_q, :]
@@ -235,20 +235,22 @@ if __name__ == "__main__":
     main(
         compute_muscle_fiber_velocity_method=ComputeMuscleFiberVelocityMethods.FlexibleTendonLinearized(),
         color="r",
-        integration_method=precise_rk45,
-    )
-    main(
-        compute_muscle_fiber_velocity_method=ComputeMuscleFiberVelocityMethods.FlexibleTendonLinearized(),
-        color="#FFA500",
-        integration_method=precise_rk4,
     )
     main(
         compute_muscle_fiber_velocity_method=ComputeMuscleFiberVelocityMethods.FlexibleTendonImplicit(
-            error_on_fail=True
+            error_on_fail=False
         ),
         color="g",
     )
-    main(compute_muscle_fiber_velocity_method=ComputeMuscleFiberVelocityMethods.FlexibleTendonExplicit(), color="b")
+    main(
+        compute_muscle_fiber_velocity_method=ComputeMuscleFiberVelocityMethods.FlexibleTendonExplicit(),
+        color="b",
+    )
+    main(
+        compute_muscle_fiber_velocity_method=ComputeMuscleFiberVelocityMethods.FlexibleTendonExplicit(),
+        color="#00A5FF",
+        integration_method=precise_rk4,
+    )
 
     repeat = 20
     print("Timing the script, each method will be repeated 20 times. This may take a while")
