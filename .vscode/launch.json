@@ -5,10 +5,10 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Length computation",
+            "name": "OCP",
             "type": "debugpy",
             "request": "launch",
-            "program": "${workspaceFolder}/scripts/main_length_calculation.py",
+            "program": "${workspaceFolder}/scripts/ocp.py",
             "console": "integratedTerminal",
         },
         {

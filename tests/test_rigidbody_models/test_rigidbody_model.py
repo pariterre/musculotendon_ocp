@@ -40,10 +40,17 @@ def test_muscle_biorbd_model_number_of_muscles():
         muscles=[
             MuscleHillModels.RigidTendon(
                 name="Mus1", maximal_force=500, optimal_length=0.1, tendon_slack_length=0.123, maximal_velocity=5.0
-            )
+            ),
+            MuscleHillModels.RigidTendon(
+                name="Mus1", maximal_force=500, optimal_length=0.1, tendon_slack_length=0.123, maximal_velocity=5.0
+            ),
+            MuscleHillModels.RigidTendon(
+                name="Mus1", maximal_force=500, optimal_length=0.1, tendon_slack_length=0.123, maximal_velocity=5.0
+            ),
         ],
     )
-    assert model.nb_muscles == 1
+    assert model.nb_muscles == 3
+    assert model.muscle_names == ["Mus1", "Mus1", "Mus1"]
 
     # Can load a model with less muscles
     model_none = RigidbodyModels.WithMuscles(model_path, muscles=[])

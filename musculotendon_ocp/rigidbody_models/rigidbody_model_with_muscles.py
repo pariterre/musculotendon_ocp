@@ -19,10 +19,11 @@ class RigidbodyModelWithMuscles(BiorbdModel):
         super().__init__(bio_model, *args, **kwargs)
 
         self._muscle_index_to_biorbd_model = []
+        biorbd_muscle_names = super(RigidbodyModelWithMuscles, self).muscle_names
         for muscle in muscles:
-            if muscle.name not in self.muscle_names:
+            if muscle.name not in biorbd_muscle_names:
                 raise ValueError(f"Muscle {muscle.name} was not found in the biorbd model")
-            self._muscle_index_to_biorbd_model.append(self.muscle_names.index(muscle.name))
+            self._muscle_index_to_biorbd_model.append(biorbd_muscle_names.index(muscle.name))
 
         self.muscles = muscles
 
@@ -74,6 +75,19 @@ class RigidbodyModelWithMuscles(BiorbdModel):
             The number of muscles
         """
         return len(self.muscles)
+
+    @property
+    @override
+    def muscle_names(self) -> list[str]:
+        """
+        Get the muscle names
+
+        Returns
+        -------
+        list[str]
+            The muscle names
+        """
+        return [muscle.name for muscle in self.muscles]
 
     @property
     def muscle_fiber_lengths_mx(self) -> MX:
