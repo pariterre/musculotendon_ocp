@@ -1,4 +1,5 @@
 from functools import partial
+from typing import Callable
 
 from bioptim import (
     OptimalControlProgram,
@@ -19,6 +20,7 @@ from bioptim import (
     Node,
     PenaltyController,
     MultinodeConstraintList,
+    PlotType,
 )
 from casadi import SX, MX, vertcat
 import numpy as np
@@ -39,12 +41,12 @@ from musculotendon_ocp import (
 # TODO COLLOCATION
 
 
-# Add a constraint at node zero for the muscle_length (instead of bound) so it adjust to the activations?
+# Constraint of no muscle velocity on the first node (instead of bound) so it adjust to the activations:
 #     This turned out to be a bad idea (at least for DMS) since solving the equilibrium instantaneously implies using
 #     the rootfinder method, making it impossible to use SX variables (which is too high of a price, compared to the
 #     benefits of this constraint)
 
-# OCP for rigid tendon
+# OCP for rigid tendon:
 #     Keeping the extra useless variables of the muscle fiber length does not seem to negatively impact the convergence
 #     time, nor the final solution, even though it doubles the amount of constraintes.
 #     It is therefore a good idea to keep them since it allows to easily switch between rigid and flexible tendons.
@@ -71,6 +73,15 @@ def prepare_forward_dynamics(model: RigidbodyModelWithMuscles, activations: MX, 
     )
     qddot = model.forward_dynamics(q, qdot, tau)
     return qddot
+
+
+def prepare_tendon_forces(model: RigidbodyModelWithMuscles, activations: MX, q: MX, qdot: MX) -> MX:
+    tendon_forces = model.tendon_forces(
+        activations=activations,
+        q=q,
+        qdot=qdot,
+    )
+    return tendon_forces
 
 
 def custom_dynamics(
@@ -180,6 +191,30 @@ def fiber_lmdot_equals_velocities_end(controller: PenaltyController) -> MX:
     return controller.controls["muscles_fiber_velocities"].cx
 
 
+def compute_tendon_forces(tendon_forces_func: Callable, nlp: NonLinearProgram, states: MX, controls: MX):
+    all_q = DynamicsFunctions.get(nlp.states["q"], states)
+    all_qdot = DynamicsFunctions.get(nlp.states["qdot"], states)
+    all_muscle_fiber_lengths = DynamicsFunctions.get(nlp.states["muscles_fiber_lengths"], states)
+    all_muscle_fiber_velocities = DynamicsFunctions.get(nlp.controls["muscles_fiber_velocities"], controls)
+    all_activations = DynamicsFunctions.get(nlp.controls["muscles"], controls)
+
+    tendon_forces = []
+    for q, qdot, muscle_fiber_lengths, muscle_fiber_velocities, muscle_activations in zip(
+        all_q.T, all_qdot.T, all_muscle_fiber_lengths.T, all_muscle_fiber_velocities.T, all_activations.T
+    ):
+        tendon_forces.append(
+            tendon_forces_func(
+                activations=muscle_activations,
+                q=q,
+                qdot=qdot,
+                muscle_fiber_lengths=muscle_fiber_lengths,
+                muscle_fiber_velocity_initial_guesses=muscle_fiber_velocities,
+            )["output"]
+        )
+
+    return np.array(tendon_forces)[:, :, 0]
+
+
 def prepare_ocp(
     model: RigidbodyModelWithMuscles,
     final_time: float,
@@ -283,7 +318,7 @@ def prepare_ocp(
         )
     constraints.add(fiber_lmdot_equals_velocities_end, node=Node.END)
 
-    return OptimalControlProgram(
+    ocp = OptimalControlProgram(
         model,
         dynamics,
         shooting_count,
@@ -300,6 +335,20 @@ def prepare_ocp(
         control_type=ControlType.LINEAR_CONTINUOUS,
     )
 
+    # Add the tendon forces to the plot
+    ocp.add_plot(
+        "Forces",
+        lambda t0, phases_dt, node_idx, x, u, p, a, d: compute_tendon_forces(
+            model.to_casadi_function(partial(prepare_tendon_forces, model=model), "activations", "q", "qdot"),
+            ocp.nlp[0],
+            states=x,
+            controls=u,
+        ),
+        plot_type=PlotType.INTEGRATED,
+    )
+
+    return ocp
+
 
 def main():
     model = RigidbodyModels.WithMuscles(
@@ -313,26 +362,26 @@ def main():
                 maximal_velocity=5.0,
                 compute_force_damping=ComputeForceDampingMethods.Linear(factor=0.1),
             ),
-            # MuscleHillModels.FlexibleTendon(
-            #     name="Mus1",
-            #     maximal_force=1000,
-            #     optimal_length=0.1,
-            #     tendon_slack_length=0.16,
-            #     compute_force_damping=ComputeForceDampingMethods.Linear(factor=0.1),
-            #     maximal_velocity=5.0,
-            #     compute_muscle_fiber_length=ComputeMuscleFiberLengthMethods.AsVariable(),
-            #     compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityMethods.FlexibleTendonLinearized(),
-            # ),
-            # MuscleHillModels.FlexibleTendon(
-            #     name="Mus1",
-            #     maximal_force=1000,
-            #     optimal_length=0.1,
-            #     tendon_slack_length=0.16,
-            #     compute_force_damping=ComputeForceDampingMethods.Linear(factor=0.1),
-            #     maximal_velocity=5.0,
-            #     compute_muscle_fiber_length=ComputeMuscleFiberLengthMethods.AsVariable(),
-            #     compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityMethods.FlexibleTendonLinearized(),
-            # ),
+            MuscleHillModels.FlexibleTendon(
+                name="Mus1",
+                maximal_force=1000,
+                optimal_length=0.1,
+                tendon_slack_length=0.16,
+                compute_force_damping=ComputeForceDampingMethods.Linear(factor=0.1),
+                maximal_velocity=5.0,
+                compute_muscle_fiber_length=ComputeMuscleFiberLengthMethods.AsVariable(),
+                compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityMethods.FlexibleTendonLinearized(),
+            ),
+            MuscleHillModels.FlexibleTendon(
+                name="Mus1",
+                maximal_force=1000,
+                optimal_length=0.1,
+                tendon_slack_length=0.16,
+                compute_force_damping=ComputeForceDampingMethods.Linear(factor=0.1),
+                maximal_velocity=5.0,
+                compute_muscle_fiber_length=ComputeMuscleFiberLengthMethods.AsVariable(),
+                compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityMethods.FlexibleTendonLinearized(),
+            ),
         ],
     )
 
