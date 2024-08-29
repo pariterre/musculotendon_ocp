@@ -32,15 +32,22 @@ from musculotendon_ocp import (
 )
 
 
-# TODO add a constraint at node zero for the muscle_length (instead of bound) so it adjust to the activations?
 # TODO add pennation angle
 # TODO Validate the muscle forces against the tendon forces
 # TODO OCP tracking a trajectory
 # TODO Test a standardized panel of muscles
 # TODO COLLOCATION
-# TODO Rigid tendon
 
-# TODO Change initial guesses for muscle_velocities
+
+# Add a constraint at node zero for the muscle_length (instead of bound) so it adjust to the activations?
+#     This turned out to be a bad idea (at least for DMS) since solving the equilibrium instantaneously implies using
+#     the rootfinder method, making it impossible to use SX variables (which is too high of a price, compared to the
+#     benefits of this constraint)
+
+# OCP for rigid tendon
+#     Keeping the extra useless variables of the muscle fiber length does not seem to negatively impact the convergence
+#     time, nor the final solution, even though it doubles the amount of constraintes.
+#     It is therefore a good idea to keep them since it allows to easily switch between rigid and flexible tendons.
 
 
 def prepare_fiber_lmdot(model: RigidbodyModelWithMuscles, activations: MX, q: MX, qdot: MX) -> MX:
@@ -101,7 +108,6 @@ def custom_dynamics(
     """
 
     model: RigidbodyModelWithMuscles = nlp.model
-
     q = DynamicsFunctions.get(nlp.states["q"], states)
     qdot = DynamicsFunctions.get(nlp.states["qdot"], states)
     muscle_fiber_lengths = DynamicsFunctions.get(nlp.states["muscles_fiber_lengths"], states)
@@ -164,11 +170,14 @@ def custom_configure(ocp: OptimalControlProgram, nlp: NonLinearProgram, numerica
 
 
 def fiber_lmdot_equals_velocities(controllers: list[PenaltyController]) -> MX:
-    return controllers[0].controls["muscles_fiber_velocities"].cx - controllers[1].states["muscles_fiber_lengths"].cx
+    return controllers[0].controls["muscles_fiber_velocities"].cx - (
+        (controllers[1].states["muscles_fiber_lengths"].cx - controllers[0].states["muscles_fiber_lengths"].cx)
+        / controllers[0].dt.cx
+    )
 
 
 def fiber_lmdot_equals_velocities_end(controller: PenaltyController) -> MX:
-    return controller.controls["muscles_fiber_velocities"].cx - controller.states["muscles_fiber_lengths"].cx
+    return controller.controls["muscles_fiber_velocities"].cx
 
 
 def prepare_ocp(
@@ -177,7 +186,6 @@ def prepare_ocp(
     q0: np.ndarray,
     qf: np.ndarray,
     ode_solver: OdeSolverBase = OdeSolver.RK4(),
-    control_type: ControlType = ControlType.LINEAR_CONTINUOUS,
     use_sx: bool = True,
 ) -> OptimalControlProgram:
     """
@@ -215,7 +223,7 @@ def prepare_ocp(
     nb_muscles = model.nb_muscles
     # Without damping, there is a singularity if the activation is 0. So it needs to be > (0 + eps) where eps is a
     # neighborhood of 0 and depends on the muscle, it can be very small or not
-    activation_min, activation_max = 0.2, 1.0
+    activation_min, activation_max = 0.05, 1.0
 
     activations_min = np.array([activation_min] * nb_muscles)
     activations_max = np.array([activation_max] * nb_muscles)
@@ -244,8 +252,9 @@ def prepare_ocp(
 
     # Minimize the muscle activation
     objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_CONTROL, key="muscles", weight=50)
-    if control_type == ControlType.LINEAR_CONTINUOUS:
-        objective_functions.add(ObjectiveFcn.Mayer.MINIMIZE_CONTROL, key="muscles", weight=50, node=Node.END)
+    objective_functions.add(
+        ObjectiveFcn.Mayer.MINIMIZE_CONTROL, key="muscles", node=Node.END, weight=50 * minimum_integration_time
+    )
 
     # Start and end at a specific position, at rest, and make sure the model is constraint the requested bounds
     x_bounds.add("q", model.bounds_from_ranges("q"))
@@ -272,8 +281,7 @@ def prepare_ocp(
             nodes_phase=(0, 0),
             nodes=(i, i + 1),
         )
-    if control_type == ControlType.LINEAR_CONTINUOUS:
-        constraints.add(fiber_lmdot_equals_velocities_end, node=Node.END)
+    constraints.add(fiber_lmdot_equals_velocities_end, node=Node.END)
 
     return OptimalControlProgram(
         model,
@@ -289,7 +297,7 @@ def prepare_ocp(
         multinode_constraints=multinode_constraints,
         use_sx=use_sx,
         ode_solver=ode_solver,
-        control_type=control_type,
+        control_type=ControlType.LINEAR_CONTINUOUS,
     )
 
 
@@ -297,16 +305,24 @@ def main():
     model = RigidbodyModels.WithMuscles(
         "musculotendon_ocp/rigidbody_models/models/one_muscle_holding_a_cube.bioMod",
         muscles=[
-            MuscleHillModels.FlexibleTendon(
+            MuscleHillModels.RigidTendon(
                 name="Mus1",
                 maximal_force=1000,
                 optimal_length=0.1,
                 tendon_slack_length=0.16,
-                compute_force_damping=ComputeForceDampingMethods.Linear(factor=0.1),
                 maximal_velocity=5.0,
-                compute_muscle_fiber_length=ComputeMuscleFiberLengthMethods.AsVariable(),
-                compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityMethods.FlexibleTendonLinearized(),
+                compute_force_damping=ComputeForceDampingMethods.Linear(factor=0.1),
             ),
+            # MuscleHillModels.FlexibleTendon(
+            #     name="Mus1",
+            #     maximal_force=1000,
+            #     optimal_length=0.1,
+            #     tendon_slack_length=0.16,
+            #     compute_force_damping=ComputeForceDampingMethods.Linear(factor=0.1),
+            #     maximal_velocity=5.0,
+            #     compute_muscle_fiber_length=ComputeMuscleFiberLengthMethods.AsVariable(),
+            #     compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityMethods.FlexibleTendonLinearized(),
+            # ),
             # MuscleHillModels.FlexibleTendon(
             #     name="Mus1",
             #     maximal_force=1000,
