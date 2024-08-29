@@ -119,20 +119,6 @@ class MuscleHillModelRigidTendon(MuscleHillModelAbstract):
         )
 
     @override
-    def compute_muscle_fiber_velocity_from_inverse(
-        self, activation: MX, muscle_fiber_length: MX, muscle_fiber_velocity: MX, tendon_length: MX
-    ) -> MX:
-        raise RuntimeError("The inverse of muscle fiber velocity should not be computed with a rigid tendon")
-
-    @override
-    def compute_muscle_fiber_velocity_from_linear_approximation(
-        self, activation: MX, muscle_fiber_length: MX, muscle_fiber_velocity: MX, tendon_length: MX
-    ) -> MX:
-        raise RuntimeError(
-            "The linear approximation of muscle fiber velocity should not be computed with a rigid tendon"
-        )
-
-    @override
     def compute_tendon_length(self, muscle_tendon_length: MX, muscle_fiber_length: MX) -> MX:
         return self.tendon_slack_length
 

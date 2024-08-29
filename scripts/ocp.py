@@ -31,7 +31,6 @@ from musculotendon_ocp import (
 
 # TODO add a constraint at node zero for the muscle_length (instead of bound) so it adjust to the activations?
 # TODO Implement the second order approximation
-# TODO Contro
 
 
 def prepare_muscle_fiber_velocities(model: RigidbodyModelWithMuscles, activations: MX, q: MX, qdot: MX) -> MX:
@@ -145,7 +144,7 @@ def prepare_ocp(
     qf: np.ndarray,
     ode_solver: OdeSolverBase = OdeSolver.RK4(),
     control_type: ControlType = ControlType.LINEAR_CONTINUOUS,
-    use_sx: bool = False,
+    use_sx: bool = True,
 ) -> OptimalControlProgram:
     """
     Prepare the ocp
@@ -209,7 +208,8 @@ def prepare_ocp(
 
     # Minimize the muscle activation
     objective_functions.add(ObjectiveFcn.Lagrange.MINIMIZE_CONTROL, key="muscles", weight=50)
-    objective_functions.add(ObjectiveFcn.Mayer.MINIMIZE_CONTROL, key="muscles", weight=50, node=Node.END)
+    if control_type == ControlType.LINEAR_CONTINUOUS:
+        objective_functions.add(ObjectiveFcn.Mayer.MINIMIZE_CONTROL, key="muscles", weight=50, node=Node.END)
 
     # Start and end at a specific position, at rest, and make sure the model is constraint the requested bounds
     x_bounds.add("q", model.bounds_from_ranges("q"))
@@ -258,14 +258,24 @@ def main():
                 compute_muscle_fiber_length=ComputeMuscleFiberLengthMethods.AsVariable(),
                 compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityMethods.FlexibleTendonLinearized(),
             ),
+            MuscleHillModels.FlexibleTendon(
+                name="Mus1",
+                maximal_force=1000,
+                optimal_length=0.1,
+                tendon_slack_length=0.16,
+                compute_force_damping=ComputeForceDampingMethods.Linear(factor=0.1),
+                maximal_velocity=5.0,
+                compute_muscle_fiber_length=ComputeMuscleFiberLengthMethods.AsVariable(),
+                compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityMethods.FlexibleTendonLinearized(),
+            ),
         ],
     )
 
     ocp = prepare_ocp(
         model=model,
-        final_time=1.0,
+        final_time=0.5,
         q0=np.array([-0.22]),
-        qf=np.array([-0.25]),
+        qf=np.array([-0.26]),
         ode_solver=OdeSolver.RK4(),
     )
 

@@ -84,17 +84,6 @@ def test_muscle_hill_model_flexible_tendon_normalize_tendon_length():
     assert_almost_equal(denormalized_tendon_length, tendon_length)
 
 
-def test_muscle_hill_model_flexible_tendon_compute_muscle_fiber_velocity_from_inverse():
-    model = MuscleHillModels.FlexibleTendon(
-        name="Dummy", maximal_force=123, optimal_length=0.123, tendon_slack_length=0.123, maximal_velocity=5.0
-    )
-
-    muscle_fiber_velocity = model.compute_muscle_fiber_velocity_from_inverse(
-        activation=0.6, muscle_fiber_length=0.120, muscle_fiber_velocity=0.0, tendon_length=0.124
-    )
-    assert_almost_equal(muscle_fiber_velocity, -5.098821204647615)
-
-
 def test_muscle_hill_model_flexible_tendon_compute_tendon_length():
     model = MuscleHillModels.FlexibleTendon(
         name="Dummy", maximal_force=123, optimal_length=0.123, tendon_slack_length=0.123, maximal_velocity=5.0

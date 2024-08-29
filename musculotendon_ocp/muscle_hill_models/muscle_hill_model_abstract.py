@@ -455,58 +455,6 @@ class MuscleHillModelAbstract(ABC):
         """
 
     @abstractmethod
-    def compute_muscle_fiber_velocity_from_inverse(
-        self, activation: MX, muscle_fiber_length: MX, muscle_fiber_velocity: MX, tendon_length: MX
-    ) -> MX:
-        """
-        Compute the muscle fiber velocity by inverting the force-velocity relationship.
-
-        Parameters
-        ----------
-        activation: MX
-            The muscle activation
-        muscle_fiber_length: MX
-            The length of the muscle fibers
-        muscle_fiber_velocity: MX
-            The velocity of the muscle fibers
-        tendon_length: MX
-            The length of the tendon
-
-        Returns
-        -------
-        MX
-            The muscle fiber velocity corresponding to the given muscle activation, length and tendon length
-        """
-
-    @abstractmethod
-    def compute_muscle_fiber_velocity_from_linear_approximation(
-        self,
-        activation: MX,
-        muscle_fiber_length: MX,
-        muscle_fiber_velocity: MX,
-        tendon_length: MX,
-    ) -> MX:
-        """
-        Compute the muscle fiber velocity by using the linear approximation of the force-velocity relationship.
-
-        Parameters
-        ----------
-        activation: MX
-            The muscle activation
-        muscle_fiber_length: MX
-            The length of the muscle fibers
-        muscle_fiber_velocity: MX
-            The velocity of the muscle fibers
-        tendon_length: MX
-            The length of the tendon
-
-        Returns
-        -------
-        MX
-            The muscle fiber velocity corresponding to the given muscle activation, length and tendon length
-        """
-
-    @abstractmethod
     def compute_tendon_length(self, muscle_tendon_length: MX, muscle_fiber_length: MX) -> MX:
         """
         Compute the tendon length

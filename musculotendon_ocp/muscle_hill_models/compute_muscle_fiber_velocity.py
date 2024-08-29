@@ -2,7 +2,7 @@ from enum import Enum
 from functools import cached_property
 
 import biorbd_casadi as biorbd
-from casadi import MX, Function, rootfinder, symvar
+from casadi import MX, Function, rootfinder, symvar, cos
 
 from .muscle_hill_model_abstract import MuscleHillModelAbstract, ComputeMuscleFiberVelocity
 from .compute_muscle_fiber_length import ComputeMuscleFiberLengthRigidTendon
@@ -170,11 +170,23 @@ class ComputeMuscleFiberVelocityFlexibleTendonExplicit(ComputeMuscleFiberVelocit
         tendon_length = muscle.compute_tendon_length(muscle_tendon_length, muscle_fiber_length)
 
         # Get the normalized muscle length and velocity
-        muscle_velocity = muscle.compute_muscle_fiber_velocity_from_inverse(
-            activation=activation_mx,
-            muscle_fiber_length=muscle_fiber_length,
-            muscle_fiber_velocity=muscle_fiber_velocity_mx,
-            tendon_length=tendon_length,
+        normalized_length = muscle.normalize_muscle_fiber_length(muscle_fiber_length)
+        normalized_velocity = muscle.normalize_muscle_fiber_velocity(muscle_fiber_velocity_mx)
+
+        # Compute the passive, active, velocity and damping factors and the normalized tendon force
+        pennation_angle = muscle.compute_pennation_angle(muscle_fiber_length)
+        force_passive = muscle.compute_force_passive(normalized_length)
+        force_active = muscle.compute_force_active(normalized_length)
+        force_damping = muscle.compute_force_damping(normalized_velocity)
+        normalized_tendon_force = muscle.compute_tendon_force(tendon_length) / muscle.maximal_force
+
+        # Compute the muscle fiber velocity
+        computed_normalized_velocity = muscle.compute_force_velocity.inverse(
+            force_velocity_inverse=((normalized_tendon_force / cos(pennation_angle)) - force_passive - force_damping)
+            / (activation_mx * force_active)
+        )
+        muscle_velocity = muscle.denormalize_muscle_fiber_velocity(
+            normalized_muscle_fiber_velocity=computed_normalized_velocity
         )
 
         # If the muscle_fiber_velocity does not depends on the muscle_fiber_velocity_mx, then the muscle_fiber_velocity
@@ -242,12 +254,26 @@ class ComputeMuscleFiberVelocityFlexibleTendonLinearized(ComputeMuscleFiberVeloc
         muscle_tendon_length = biorbd_muscle.musculoTendonLength(model_kinematic_updated, q).to_mx()
         tendon_length = muscle.compute_tendon_length(muscle_tendon_length, muscle_fiber_length)
 
-        # Get the muscle and velocity
-        muscle_velocity = muscle.compute_muscle_fiber_velocity_from_linear_approximation(
-            activation=activation,
-            muscle_fiber_length=muscle_fiber_length,
-            muscle_fiber_velocity=muscle_fiber_velocity_mx,
-            tendon_length=tendon_length,
+        # Compute some normalized values
+        normalized_length = muscle.normalize_muscle_fiber_length(muscle_fiber_length)
+        normalized_velocity = muscle.normalize_muscle_fiber_velocity(muscle_fiber_velocity_mx)
+        pennation_angle = muscle.compute_pennation_angle(muscle_fiber_length)
+
+        # Compute the normalized forces
+        force_passive = muscle.compute_force_passive(normalized_length)
+        force_active = muscle.compute_force_active(normalized_length)
+        normalized_tendon_force = muscle.compute_tendon_force(tendon_length) / muscle.maximal_force
+
+        # Compute linear approximation of the muscle fiber velocity
+        derivative = muscle.compute_force_velocity.derivative(normalized_velocity)
+        slope = derivative
+        bias = -derivative * normalized_velocity + muscle.compute_force_velocity(normalized_velocity)
+
+        muscle_velocity = muscle.denormalize_muscle_fiber_velocity(
+            normalized_muscle_fiber_velocity=(
+                (normalized_tendon_force / cos(pennation_angle)) - force_passive - bias * activation * force_active
+            )
+            / (slope * activation * force_active + muscle.compute_force_damping.factor)
         )
 
         return muscle_velocity

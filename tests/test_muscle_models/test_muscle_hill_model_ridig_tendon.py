@@ -98,23 +98,6 @@ def test_muscle_hill_model_rigid_tendon_normalize_tendon_length():
         model.normalize_tendon_length(tendon_length=0.456)
 
 
-def test_muscle_hill_model_rigid_tendon_compute_muscle_fiber_velocity_from_inverse():
-    model = MuscleHillModels.RigidTendon(
-        name="Dummy",
-        maximal_force=123,
-        optimal_length=0.123,
-        tendon_slack_length=0.123,
-        maximal_velocity=5.0,
-    )
-
-    with pytest.raises(
-        RuntimeError, match="The inverse of muscle fiber velocity should not be computed with a rigid tendon"
-    ):
-        model.compute_muscle_fiber_velocity_from_inverse(
-            activation=None, muscle_fiber_length=None, muscle_fiber_velocity=None, tendon_length=None
-        )
-
-
 def test_muscle_hill_model_rigid_tendon_compute_tendon_length():
     tendon_slack_length = 0.123
     model = MuscleHillModels.RigidTendon(
