@@ -45,8 +45,21 @@ def dynamics(_, x, dynamics_func: Callable, model: RigidbodyModelWithMuscles, ac
 
 
 def qddot_from_muscles(model: RigidbodyModelWithMuscles, activations: MX, q: MX, qdot: MX) -> MX:
-    muscle_fiber_lengths = model.muscle_fiber_lengths(activations, q, qdot)
-    tau = model.muscle_joint_torque(activations, q, qdot, muscle_fiber_lengths)
+    muscle_fiber_lengths = model.muscle_fiber_lengths(activations=activations, q=q, qdot=qdot)
+    muscle_fiber_velocities = model.muscle_fiber_velocities(
+        activations=activations,
+        q=q,
+        qdot=qdot,
+        muscle_fiber_lengths=muscle_fiber_lengths,
+        muscle_fiber_velocity_initial_guesses=np.array([0.0] * model.nb_muscles),
+    )
+    tau = model.muscle_joint_torque(
+        activations=activations,
+        q=q,
+        qdot=qdot,
+        muscle_fiber_lengths=muscle_fiber_lengths,
+        muscle_fiber_velocities=muscle_fiber_velocities,
+    )
     return model.forward_dynamics(q, qdot, tau)
 
 

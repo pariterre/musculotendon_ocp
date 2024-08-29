@@ -127,6 +127,22 @@ def test_muscle_biorbd_model_get_mx_variables():
         # Make sure the muscle_fiber_velocity_mx_variables[1] is not the same as muscle_fiber_velocity_mx_variables[0]
         Function("f", [muscle_fiber_velocity_mx], [muscle_fiber_velocity_mx_variables[3]])
 
+    muscle_fiber_velocity_mx_variables = model.muscle_fiber_velocity_initial_guesses_mx
+    assert isinstance(muscle_fiber_velocity_mx_variables, MX)
+    assert muscle_fiber_velocity_mx_variables.shape == (4, 1)
+    np.testing.assert_almost_equal(
+        Function("f", [muscle_fiber_velocity_mx_variables], [muscle_fiber_velocity_mx_variables])(1.234).T,
+        np.array([[1.234] * model.nb_muscles]),
+    )
+    # Make sure the muscle_fiber_velocity_mx_variables[0] is actually a MX.sym variable
+    with pytest.raises(RuntimeError):
+        Function("f", [MX.sym("dummy", 1, 1)], [muscle_fiber_velocity_mx_variables[2]])
+    # Make sure the muscle_fiber_velocity_mx_variables[1] is not the same as muscle_fiber_velocity_mx_variables[0]
+    with pytest.raises(RuntimeError):
+        Function("f", [muscle_fiber_velocity_mx], [muscle_fiber_velocity_mx_variables[3]])
+    # Make sure calling the method twice returns the same variable
+    assert id(muscle_fiber_velocity_mx_variables) == id(model.muscle_fiber_velocity_initial_guesses_mx)
+
 
 def test_muscle_tendon_lengths():
     rigid = MuscleHillModels.RigidTendon
@@ -332,6 +348,7 @@ def test_muscle_biorbd_model_muscle_fiber_velocities():
         q=q,
         qdot=qdot,
         muscle_fiber_lengths=muscle_fiber_lengths_equilibrated,
+        muscle_fiber_velocity_initial_guesses=np.zeros((model.nb_muscles, 1)),
     )
     assert muscle_fiber_velocities.shape == (8, 1)
     np.testing.assert_almost_equal(muscle_fiber_velocities.T, [[-0.1, -0.1, -0.1, -0.1, 0.0, 0.0, 0.0, 0.0]])
@@ -339,6 +356,7 @@ def test_muscle_biorbd_model_muscle_fiber_velocities():
     muscle_fiber_velocities = model.function_to_dm(
         model.muscle_fiber_velocities,
         muscle_fiber_lengths=muscle_fiber_lengths_equilibrated - 0.0001,
+        muscle_fiber_velocity_initial_guesses=np.zeros((model.nb_muscles, 1)),
         activations=activations,
         q=q,
         qdot=qdot,
@@ -373,10 +391,19 @@ def test_muscle_biorbd_model_muscle_forces():
     muscle_fiber_lengths_equilibrated = model.function_to_dm(
         model.muscle_fiber_lengths_equilibrated, activations=activations, q=q, qdot=qdot
     )
+    muscle_fiber_velocities = model.function_to_dm(
+        model.muscle_fiber_velocities,
+        muscle_fiber_lengths=muscle_fiber_lengths_equilibrated,
+        activations=activations,
+        q=q,
+        qdot=qdot,
+        muscle_fiber_velocity_initial_guesses=np.zeros((model.nb_muscles, 1)),
+    )
 
     muscle_forces = model.function_to_dm(
         model.muscle_forces,
         muscle_fiber_lengths=muscle_fiber_lengths_equilibrated,
+        muscle_fiber_velocities=muscle_fiber_velocities,
         activations=activations,
         q=q,
         qdot=qdot,
@@ -411,10 +438,19 @@ def test_muscle_biorbd_model_muscle_joint_torque():
     muscle_fiber_lengths_equilibrated = model.function_to_dm(
         model.muscle_fiber_lengths_equilibrated, activations=activations, q=q, qdot=qdot
     )
+    muscle_fiber_velocities = model.function_to_dm(
+        model.muscle_fiber_velocities,
+        muscle_fiber_lengths=muscle_fiber_lengths_equilibrated,
+        activations=activations,
+        q=q,
+        qdot=qdot,
+        muscle_fiber_velocity_initial_guesses=np.zeros((model.nb_muscles, 1)),
+    )
 
     muscle_joint_torque = model.function_to_dm(
         model.muscle_joint_torque,
         muscle_fiber_lengths=muscle_fiber_lengths_equilibrated,
+        muscle_fiber_velocities=muscle_fiber_velocities,
         activations=activations,
         q=q,
         qdot=qdot,
@@ -441,7 +477,9 @@ def test_muscle_biorbd_model_casadi_function_interface():
     # Only certain inputs are allowed
     with pytest.raises(
         ValueError,
-        match="Expected 'q', 'qdot', 'activations', 'muscle_fiber_lengths' or 'muscle_fiber_velocities', got dummy",
+        match=(
+            "Expected 'q', 'qdot', 'activations', 'muscle_fiber_lengths', 'muscle_fiber_velocities', 'muscle_fiber_velocity_initial_guesses' but got dummy"
+        ),
     ):
         model.to_casadi_function(my_small_function, "dummy")
 

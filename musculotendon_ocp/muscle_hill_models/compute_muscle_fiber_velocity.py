@@ -2,7 +2,7 @@ from enum import Enum
 from functools import cached_property
 
 import biorbd_casadi as biorbd
-from casadi import MX, Function, rootfinder, symvar, cos
+from casadi import MX, Function, rootfinder, symvar, cos, sqrt
 
 from .muscle_hill_model_abstract import MuscleHillModelAbstract, ComputeMuscleFiberVelocity
 from .compute_muscle_fiber_length import ComputeMuscleFiberLengthRigidTendon
@@ -35,6 +35,7 @@ class ComputeMuscleFiberVelocityAsVariable:
         q: MX,
         qdot: MX,
         muscle_fiber_length: MX,
+        muscle_fiber_velocity_initial_guess: MX,
     ) -> biorbd.MX:
         return self.mx_variable
 
@@ -55,6 +56,7 @@ class ComputeMuscleFiberVelocityRigidTendon(ComputeMuscleFiberVelocityAsVariable
         q: MX,
         qdot: MX,
         muscle_fiber_length: MX,
+        muscle_fiber_velocity_initial_guess: MX,
     ) -> biorbd.MX:
         biorbd_muscle.updateOrientations(model_kinematic_updated, q, qdot)
 
@@ -69,7 +71,7 @@ class ComputeMuscleFiberVelocityFlexibleTendonImplicit(ComputeMuscleFiberVelocit
     Compute the muscle fiber velocity by inverting the force-velocity relationship.
     """
 
-    def __init__(self, mx_symbolic: MX = None, error_on_fail: bool = True) -> None:
+    def __init__(self, mx_symbolic: MX = None) -> None:
         """
         Initialize the ComputeMuscleFiberVelocityFlexibleTendonImplicit class.
 
@@ -77,13 +79,8 @@ class ComputeMuscleFiberVelocityFlexibleTendonImplicit(ComputeMuscleFiberVelocit
         ----------
         mx_symbolic: MX
             The symbolic variable representing the muscle fiber velocity.
-        error_on_fail: bool
-            If True, an error is raised if the rootfinder does not converge. Otherwise, the last value is returned.
-            This method turns out to be somewhat unstable and may not converge. This is why the error_on_fail parameter
-            is accessible to be turned off.
         """
         super().__init__(mx_symbolic)
-        self.error_on_fail = error_on_fail
 
     def __call__(
         self,
@@ -94,6 +91,7 @@ class ComputeMuscleFiberVelocityFlexibleTendonImplicit(ComputeMuscleFiberVelocit
         q: MX,
         qdot: MX,
         muscle_fiber_length: MX,
+        muscle_fiber_velocity_initial_guess: MX,
     ) -> biorbd.MX:
         if isinstance(muscle.compute_muscle_fiber_length, ComputeMuscleFiberLengthRigidTendon):
             raise ValueError("The compute_muscle_fiber_length must not be a ComputeMuscleFiberLengthRigidTendon")
@@ -135,10 +133,10 @@ class ComputeMuscleFiberVelocityFlexibleTendonImplicit(ComputeMuscleFiberVelocit
             "newton_method",
             "newton",
             equality_constraint,
-            {"error_on_fail": self.error_on_fail},
+            {"error_on_fail": True},
         )
 
-        return newton_method(i0=0, i1=muscle_fiber_length, i2=activation, i3=q)["o0"]
+        return newton_method(i0=muscle_fiber_velocity_initial_guess, i1=muscle_fiber_length, i2=activation, i3=q)["o0"]
 
 
 class ComputeMuscleFiberVelocityFlexibleTendonExplicit(ComputeMuscleFiberVelocityAsVariable):
@@ -155,6 +153,7 @@ class ComputeMuscleFiberVelocityFlexibleTendonExplicit(ComputeMuscleFiberVelocit
         q: MX,
         qdot: MX,
         muscle_fiber_length: MX,
+        muscle_fiber_velocity_initial_guess: MX,
     ) -> biorbd.MX:
         if isinstance(muscle.compute_muscle_fiber_length, ComputeMuscleFiberLengthRigidTendon):
             raise ValueError("The compute_muscle_fiber_length must not be a ComputeMuscleFiberLengthRigidTendon")
@@ -225,12 +224,16 @@ class ComputeMuscleFiberVelocityFlexibleTendonExplicit(ComputeMuscleFiberVelocit
             {"error_on_fail": True},
         )
 
-        return newton_method(i0=0, i1=muscle_fiber_length, i2=activation, i3=q)["o0"]
+        return newton_method(i0=muscle_fiber_velocity_initial_guess, i1=muscle_fiber_length, i2=activation, i3=q)["o0"]
 
 
 class ComputeMuscleFiberVelocityFlexibleTendonLinearized(ComputeMuscleFiberVelocityAsVariable):
     """
-    Compute the muscle fiber velocity by approximating the force-velocity relationship with a linear function.
+    Compute the muscle fiber velocity by approximating the force-velocity relationship with a linear approximation.
+
+    The function uses the first order Taylor expansion of the force-velocity relationship around the normalized muscle
+    fiber velocity. The Taylor expansion is given by:
+    f(v) = f(v0) + f'(v0) * (v - v0)
     """
 
     def __call__(
@@ -242,12 +245,10 @@ class ComputeMuscleFiberVelocityFlexibleTendonLinearized(ComputeMuscleFiberVeloc
         q: MX,
         qdot: MX,
         muscle_fiber_length: MX,
+        muscle_fiber_velocity_initial_guess: MX,
     ) -> biorbd.MX:
         if isinstance(muscle.compute_muscle_fiber_length, ComputeMuscleFiberLengthRigidTendon):
             raise ValueError("The compute_muscle_fiber_length must not be a ComputeMuscleFiberLengthRigidTendon")
-
-        # Alias for the MX variables
-        muscle_fiber_velocity_mx = self.mx_variable
 
         # Compute necessary variables
         biorbd_muscle.updateOrientations(model_kinematic_updated, q)
@@ -256,7 +257,7 @@ class ComputeMuscleFiberVelocityFlexibleTendonLinearized(ComputeMuscleFiberVeloc
 
         # Compute some normalized values
         normalized_length = muscle.normalize_muscle_fiber_length(muscle_fiber_length)
-        normalized_velocity = muscle.normalize_muscle_fiber_velocity(muscle_fiber_velocity_mx)
+        normalized_velocity = muscle.normalize_muscle_fiber_velocity(muscle_fiber_velocity_initial_guess)
         pennation_angle = muscle.compute_pennation_angle(muscle_fiber_length)
 
         # Compute the normalized forces
@@ -265,7 +266,7 @@ class ComputeMuscleFiberVelocityFlexibleTendonLinearized(ComputeMuscleFiberVeloc
         normalized_tendon_force = muscle.compute_tendon_force(tendon_length) / muscle.maximal_force
 
         # Compute linear approximation of the muscle fiber velocity
-        derivative = muscle.compute_force_velocity.derivative(normalized_velocity)
+        derivative = muscle.compute_force_velocity.first_derivative(normalized_velocity)
         slope = derivative
         bias = -derivative * normalized_velocity + muscle.compute_force_velocity(normalized_velocity)
 
@@ -279,11 +280,80 @@ class ComputeMuscleFiberVelocityFlexibleTendonLinearized(ComputeMuscleFiberVeloc
         return muscle_velocity
 
 
+class ComputeMuscleFiberVelocityFlexibleTendonQuadratic(ComputeMuscleFiberVelocityAsVariable):
+    """
+    Compute the muscle fiber velocity by approximating the force-velocity relationship with a quadratic approximation.
+
+    The function uses the 2nd order Taylor expansion of the force-velocity relationship around the normalized muscle
+    fiber velocity. The Taylor expansion is given by:
+    f(v) = f(v0) + f'(v0) * (v - v0) + f''(v0) * (v - v0)^2 / 2
+    """
+
+    def __call__(
+        self,
+        muscle: MuscleHillModelAbstract,
+        model_kinematic_updated: biorbd.Model,
+        biorbd_muscle: biorbd.Muscle,
+        activation: MX,
+        q: MX,
+        qdot: MX,
+        muscle_fiber_length: MX,
+        muscle_fiber_velocity_initial_guess: MX,
+    ) -> biorbd.MX:
+        if isinstance(muscle.compute_muscle_fiber_length, ComputeMuscleFiberLengthRigidTendon):
+            raise ValueError("The compute_muscle_fiber_length must not be a ComputeMuscleFiberLengthRigidTendon")
+
+        # Compute necessary variables
+        biorbd_muscle.updateOrientations(model_kinematic_updated, q)
+        muscle_tendon_length = biorbd_muscle.musculoTendonLength(model_kinematic_updated, q).to_mx()
+        tendon_length = muscle.compute_tendon_length(muscle_tendon_length, muscle_fiber_length)
+
+        # Compute some normalized values
+        normalized_length = muscle.normalize_muscle_fiber_length(muscle_fiber_length)
+        normalized_velocity = muscle.normalize_muscle_fiber_velocity(muscle_fiber_velocity_initial_guess)
+        pennation_angle = muscle.compute_pennation_angle(muscle_fiber_length)
+
+        # Compute the normalized forces
+        force_passive = muscle.compute_force_passive(normalized_length)
+        force_active = muscle.compute_force_active(normalized_length)
+        normalized_tendon_force = muscle.compute_tendon_force(tendon_length) / muscle.maximal_force
+
+        # Compute the derivatives
+        first_derivative = muscle.compute_force_velocity.first_derivative(normalized_velocity)
+        second_derivative = muscle.compute_force_velocity.second_derivative(normalized_velocity)
+
+        # Compute the polynomial coefficients of the Taylor expansion at second order of force-velocity relationship
+        biais = (
+            muscle.compute_force_velocity(normalized_velocity)
+            - first_derivative * normalized_velocity
+            + second_derivative * normalized_velocity**2 / 2
+        )
+        slope = first_derivative - second_derivative * normalized_velocity
+        quadratic_coeff = second_derivative / 2
+
+        # Compute the polynomial coefficients of the differential equation of the muscle equilibrium equation
+        polynomial_quadratic_coeff = activation * force_active * quadratic_coeff
+        polynomial_slope = activation * force_active * slope + muscle.compute_force_damping.factor
+        polynomial_bias = (
+            force_passive - (normalized_tendon_force / cos(pennation_angle)) + biais * activation * force_active
+        )
+
+        # Compute the roots of the polynomial
+        discriminant = polynomial_slope**2 - 4 * polynomial_quadratic_coeff * polynomial_bias
+
+        # We may have to switch from the first root to the second one at some velocity levels, e.g. positive or negative
+        computed_normalized_velocity = (-polynomial_slope + sqrt(discriminant)) / (2 * polynomial_quadratic_coeff)
+        # or computed_normalized_velocity = (-polynomial_slope - sqrt(discriminant)) / (2 * polynomial_quadratic_coeff)
+
+        return muscle.denormalize_muscle_fiber_velocity(normalized_muscle_fiber_velocity=computed_normalized_velocity)
+
+
 class ComputeMuscleFiberVelocityMethods(Enum):
     RigidTendon = ComputeMuscleFiberVelocityRigidTendon
     FlexibleTendonImplicit = ComputeMuscleFiberVelocityFlexibleTendonImplicit
     FlexibleTendonExplicit = ComputeMuscleFiberVelocityFlexibleTendonExplicit
     FlexibleTendonLinearized = ComputeMuscleFiberVelocityFlexibleTendonLinearized
+    FlexibleTendonQuadratic = ComputeMuscleFiberVelocityFlexibleTendonQuadratic
 
     def __call__(self, *args, **kwargs) -> ComputeMuscleFiberVelocity:
         return self.value(*args, **kwargs)

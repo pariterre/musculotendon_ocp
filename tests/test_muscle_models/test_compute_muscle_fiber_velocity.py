@@ -19,7 +19,7 @@ model_path = (
 
 
 def test_compute_muscle_fiber_velocity_methods():
-    assert len(ComputeMuscleFiberVelocityMethods) == 4
+    assert len(ComputeMuscleFiberVelocityMethods) == 5
 
     rigid_tendon = ComputeMuscleFiberVelocityMethods.RigidTendon()
     assert type(rigid_tendon) == ComputeMuscleFiberVelocityMethods.RigidTendon.value
@@ -32,6 +32,9 @@ def test_compute_muscle_fiber_velocity_methods():
 
     flexible_tendon_linearized = ComputeMuscleFiberVelocityMethods.FlexibleTendonLinearized()
     assert type(flexible_tendon_linearized) == ComputeMuscleFiberVelocityMethods.FlexibleTendonLinearized.value
+
+    flexible_tendon_quadratic = ComputeMuscleFiberVelocityMethods.FlexibleTendonQuadratic()
+    assert type(flexible_tendon_quadratic) == ComputeMuscleFiberVelocityMethods.FlexibleTendonQuadratic.value
 
 
 def test_compute_muscle_fiber_velocity_rigid_tendon():
@@ -54,6 +57,7 @@ def test_compute_muscle_fiber_velocity_rigid_tendon():
                 biorbd_muscle=model.model.muscle(0),
                 activation=activation,
                 muscle_fiber_length=None,
+                muscle_fiber_velocity_initial_guess=None,
             ),
             q=q,
             qdot=qdot,
@@ -83,6 +87,7 @@ def test_compute_muscle_fiber_velocity_flexible_tendon_implicit():
             model_kinematic_updated=model.model.UpdateKinematicsCustom(q),
             biorbd_muscle=model.model.muscle(0),
             muscle_fiber_length=np.array([0.1]),
+            muscle_fiber_velocity_initial_guess=np.array([0.0]),
         )
     )
     np.testing.assert_almost_equal(muscle_fiber_velocity, -5.201202604749881)
@@ -112,6 +117,7 @@ def test_compute_muscle_fiber_velocity_flexible_tendon_implicit_wrong_constructo
             model_kinematic_updated=model.model.UpdateKinematicsCustom(q),
             biorbd_muscle=model.model.muscle(0),
             muscle_fiber_length=np.array([0.1]),
+            muscle_fiber_velocity_initial_guess=np.array([0.0]),
         )
 
 
@@ -135,6 +141,7 @@ def test_compute_muscle_fiber_velocity_flexible_tendon_explicit():
             biorbd_muscle=model.model.muscle(0),
             activation=activation,
             muscle_fiber_length=np.array([0.1]),
+            muscle_fiber_velocity_initial_guess=np.array([0.0]),
         ),
         q=q,
         qdot=qdot,
@@ -167,11 +174,12 @@ def test_compute_muscle_fiber_velocity_flexible_tendon_explicit_wrong_constructo
             model_kinematic_updated=model.model.UpdateKinematicsCustom(q),
             biorbd_muscle=model.model.muscle(0),
             muscle_fiber_length=np.array([0.1]),
+            muscle_fiber_velocity_initial_guess=np.array([0.0]),
         )
 
 
 def test_compute_muscle_fiber_velocity_flexible_tendon_linearized():
-    def evaluate(muscle_fiber_velocity: float):
+    def evaluate(muscle_fiber_length: float, muscle_fiber_velocity_initial_guess: float):
         return float(
             model.function_to_dm(
                 partial(
@@ -180,7 +188,8 @@ def test_compute_muscle_fiber_velocity_flexible_tendon_linearized():
                     model_kinematic_updated=model.model.UpdateKinematicsCustom(q),
                     biorbd_muscle=model.model.muscle(0),
                     activation=activation,
-                    muscle_fiber_length=np.array([muscle_fiber_velocity]),
+                    muscle_fiber_length=np.array([muscle_fiber_length]),
+                    muscle_fiber_velocity_initial_guess=np.array([muscle_fiber_velocity_initial_guess]),
                 ),
                 q=q,
                 qdot=qdot,
@@ -202,5 +211,46 @@ def test_compute_muscle_fiber_velocity_flexible_tendon_linearized():
     q = np.ones(model.nb_q) * -0.2
     qdot = np.ones(model.nb_qdot)
 
-    np.testing.assert_almost_equal(evaluate(0.1), -1.9093250424184014)
-    np.testing.assert_almost_equal(evaluate(0.2), -676.3254672085245)
+    np.testing.assert_almost_equal(evaluate(0.1, 0.0), -1.9093250424184014)
+    np.testing.assert_almost_equal(evaluate(0.1, -3.4), -3.437901945795994)
+    np.testing.assert_almost_equal(evaluate(0.2, 0.0), -676.3254672085245)
+    np.testing.assert_almost_equal(evaluate(0.2, -731.8), -731.8420239027942)
+
+
+def test_compute_muscle_fiber_velocity_flexible_tendon_quadratic():
+    def evaluate(muscle_fiber_length: float, muscle_fiber_velocity_initial_guess: float):
+        return float(
+            model.function_to_dm(
+                partial(
+                    mus.compute_muscle_fiber_velocity,
+                    muscle=mus,
+                    model_kinematic_updated=model.model.UpdateKinematicsCustom(q),
+                    biorbd_muscle=model.model.muscle(0),
+                    activation=activation,
+                    muscle_fiber_length=np.array([muscle_fiber_length]),
+                    muscle_fiber_velocity_initial_guess=np.array([muscle_fiber_velocity_initial_guess]),
+                ),
+                q=q,
+                qdot=qdot,
+            )
+        )
+
+    mus = MuscleHillModels.FlexibleTendonAlwaysPositive(
+        name="Mus1",
+        maximal_force=500,
+        optimal_length=0.1,
+        tendon_slack_length=0.123,
+        maximal_velocity=5.0,
+        compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityMethods.FlexibleTendonQuadratic(),
+        compute_force_damping=ComputeForceDampingMethods.Linear(0.1),
+    )
+    model = RigidbodyModels.WithMuscles(model_path, muscles=[mus])
+
+    activation = np.array([0.5])
+    q = np.ones(model.nb_q) * -0.2
+    qdot = np.ones(model.nb_qdot)
+
+    np.testing.assert_almost_equal(evaluate(0.1, 0.0), -1.4148579102945984)
+    np.testing.assert_almost_equal(evaluate(0.1, -3.4), -3.438058496100624)
+    np.testing.assert_almost_equal(evaluate(0.2, 0.0), -159.10620315897017)
+    np.testing.assert_almost_equal(evaluate(0.2, -731.8), -731.8420239027369)

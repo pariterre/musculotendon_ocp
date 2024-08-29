@@ -73,11 +73,9 @@ class ComputeForceVelocity(Protocol):
             The normalized velocity corresponding to the given inverse of the force-velocity relationship
         """
 
-    def derivative(self, normalized_muscle_fiber_velocity: MX) -> tuple[MX, MX]:
+    def first_derivative(self, normalized_muscle_fiber_velocity: MX) -> MX:
         """
-        # TODO Fix the docstring
-        Computation of the linear approximation coefficients of muscle velocity force to linearize the force-velocity
-        relationship at a given normalized_muscle_fiber_velocity.
+        Computation the first order derivative of the force-velocity relationship at a given normalized_muscle_fiber_velocity.
 
         Parameters
         ----------
@@ -86,16 +84,13 @@ class ComputeForceVelocity(Protocol):
 
         Returns
         -------
-        tuple[MX, MX]
-            The linear approximation coefficient (a, b) such that the force-velocity relationship can be approximated
-            as f = a * v + b
+        MX
+            The first derivative of the force-velocity relationship at the given normalized_muscle_fiber_velocity
         """
 
-    def second_derivative(self, normalized_muscle_fiber_velocity: MX) -> tuple[MX, MX]:
+    def second_derivative(self, normalized_muscle_fiber_velocity: MX) -> MX:
         """
-        # TODO Fix the docstring
-        Computation of the linear approximation coefficients of muscle velocity force to approximate with a second order
-        Taylor expansion the force-velocity relationship at a given normalized_muscle_fiber_velocity.
+        Computation the second order derivative of the force-velocity relationship at a given normalized_muscle_fiber_velocity.
 
         Parameters
         ----------
@@ -104,10 +99,8 @@ class ComputeForceVelocity(Protocol):
 
         Returns
         -------
-        tuple[MX, MX, MX]
-            The second order approximation coefficient (d, e, f) such that the force-velocity relationship can be
-            approximated as f(v) = d * v^2 + e * v + f
-
+        MX
+            The second derivative of the force-velocity relationship at the given normalized_muscle_fiber_velocity
         """
 
 
@@ -218,7 +211,7 @@ class ComputeMuscleFiberVelocity(Protocol):
         q: MX,
         qdot: MX,
         muscle_fiber_length: MX,
-        tendon_length: MX,
+        muscle_fiber_velocity_initial_guess: MX,
     ) -> MX:
         """
         Compute the muscle velocity
@@ -239,8 +232,8 @@ class ComputeMuscleFiberVelocity(Protocol):
             The generalized velocities
         muscle_fiber_length: MX
             The muscle fiber length
-        tendon_length: MX
-            The tendon length
+        muscle_fiber_velocity_initial_guess: MX
+            The initial guess of the muscle fiber velocity
 
         Returns
         -------

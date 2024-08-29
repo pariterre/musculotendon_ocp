@@ -105,6 +105,14 @@ class RigidbodyModelWithMuscles(BiorbdModel):
                 variables.append(muscle.compute_muscle_fiber_velocity.mx_variable)
         return vertcat(*variables)
 
+    @cached_property
+    def muscle_fiber_velocity_initial_guesses_mx(self) -> MX:
+        variables = []
+        for muscle in self.muscles:
+            if isinstance(muscle.compute_muscle_fiber_velocity, ComputeMuscleFiberVelocityAsVariable):
+                variables.append(MX.sym(f"vm_{muscle.name}", 1, 1))
+        return vertcat(*variables)
+
     def muscle_tendon_lengths(self, q) -> MX:
         """
         Compute the muscle-tendon lengths
@@ -265,7 +273,9 @@ class RigidbodyModelWithMuscles(BiorbdModel):
 
         return lengths
 
-    def muscle_fiber_velocities(self, activations: MX, q: MX, qdot: MX, muscle_fiber_lengths: MX) -> MX:
+    def muscle_fiber_velocities(
+        self, activations: MX, q: MX, qdot: MX, muscle_fiber_lengths: MX, muscle_fiber_velocity_initial_guesses: MX
+    ) -> MX:
         """
         Compute the muscle velocities
 
@@ -279,6 +289,8 @@ class RigidbodyModelWithMuscles(BiorbdModel):
             The generalized velocities vector of size (n_dof x 1)
         muscle_fiber_lengths: MX
             The muscle fiber lengths vector of size (n_muscles x 1)
+        muscle_fiber_velocity_initial_guesses: MX
+            The initial guesses for the muscle fiber velocities vector of size (n_muscles x 1)
 
         Returns
         -------
@@ -298,10 +310,13 @@ class RigidbodyModelWithMuscles(BiorbdModel):
                 q=q,
                 qdot=qdot,
                 muscle_fiber_length=muscle_fiber_lengths[index],
+                muscle_fiber_velocity_initial_guess=muscle_fiber_velocity_initial_guesses[index],
             )
         return velocities
 
-    def muscle_forces(self, activations: MX, q: MX, qdot: MX, muscle_fiber_lengths: MX) -> MX:
+    def muscle_forces(
+        self, activations: MX, q: MX, qdot: MX, muscle_fiber_lengths: MX, muscle_fiber_velocities: MX
+    ) -> MX:
         """
         Compute the muscle forces
 
@@ -315,14 +330,14 @@ class RigidbodyModelWithMuscles(BiorbdModel):
             The generalized velocities vector of size (n_dof x 1)
         muscle_fiber_lengths: MX
             The muscle fiber lengths vector of size (n_muscles x 1)
+        muscle_fiber_velocities: MX
+            The muscle fiber velocities vector of size (n_muscles x 1)
 
         Returns
         -------
         MX
             The muscle forces vector of size (n_muscles x 1)
         """
-
-        muscle_fiber_velocities = self.muscle_fiber_velocities(activations, q, qdot, muscle_fiber_lengths)
 
         forces = MX.zeros(self.nb_muscles, 1)
         for i, muscle in enumerate(self.muscles):
@@ -335,7 +350,9 @@ class RigidbodyModelWithMuscles(BiorbdModel):
         return forces
 
     @override
-    def muscle_joint_torque(self, activations: MX, q: MX, qdot: MX, muscle_fiber_lengths: MX) -> MX:
+    def muscle_joint_torque(
+        self, activations: MX, q: MX, qdot: MX, muscle_fiber_lengths: MX, muscle_fiber_velocities: MX
+    ) -> MX:
         """
         Compute the muscle joint torque
 
@@ -349,6 +366,8 @@ class RigidbodyModelWithMuscles(BiorbdModel):
             The generalized velocities vector of size (n_dof x 1)
         muscle_fiber_lengths: MX
             The muscle fiber lengths vector of size (n_muscles x 1)
+        muscle_fiber_velocities: MX
+            The muscle fiber velocities vector of size (n_muscles x 1)
 
         Returns
         -------
@@ -356,14 +375,20 @@ class RigidbodyModelWithMuscles(BiorbdModel):
             The muscle joint torque vector of size (n_dof x 1)
         """
         muscle_tendon_length_jacobian = self.muscle_tendon_length_jacobian(q)
-        muscle_forces = self.muscle_forces(activations, q, qdot, muscle_fiber_lengths)
+        muscle_forces = self.muscle_forces(
+            activations=activations,
+            q=q,
+            qdot=qdot,
+            muscle_fiber_lengths=muscle_fiber_lengths,
+            muscle_fiber_velocities=muscle_fiber_velocities,
+        )
 
         return -muscle_tendon_length_jacobian.T @ muscle_forces
 
     def to_casadi_function(self, mx_function: Callable[[Any], MX], *keys: Iterable[str]) -> Function:
         """
         Convert a CasADi MX to a CasADi Function with specific parameters. To evaluate the function you can call it
-        with the following parameters: ["q", "qdot", "activations", "muscle_fiber_lengths", "muscle_fiber_velocities"]
+        with the following parameters: ["q", "qdot", "activations", "muscle_fiber_lengths", "muscle_fiber_velocities", "muscle_fiber_velocity_initial_guesses"]
         and get the ["output"] value.
 
         Parameters
@@ -371,7 +396,8 @@ class RigidbodyModelWithMuscles(BiorbdModel):
         mx_function: Callable
             The CasADi MX function to convert to a casadi function.
         keys: Iterable[str]
-            The keys of the variables to use in the function, limited to "q", "qdot", "activations", "muscle_fiber_lengths", "muscle_fiber_velocities".
+            The keys of the variables to use in the function, limited to "q", "qdot", "activations",
+            "muscle_fiber_lengths", "muscle_fiber_velocities", "muscle_fiber_velocity_initial_guesses".
             The order of the keys must match the order of the arguments in the mx_function.
 
         Returns
@@ -392,9 +418,12 @@ class RigidbodyModelWithMuscles(BiorbdModel):
                 keys_to_mx[key] = self.muscle_fiber_lengths_mx
             elif key == "muscle_fiber_velocities":
                 keys_to_mx[key] = self.muscle_fiber_velocities_mx
+            elif key == "muscle_fiber_velocity_initial_guesses":
+                keys_to_mx[key] = self.muscle_fiber_velocity_initial_guesses_mx
             else:
                 raise ValueError(
-                    f"Expected 'q', 'qdot', 'activations', 'muscle_fiber_lengths' or 'muscle_fiber_velocities', got {key}"
+                    f"Expected 'q', 'qdot', 'activations', 'muscle_fiber_lengths', 'muscle_fiber_velocities', "
+                    f"'muscle_fiber_velocity_initial_guesses' but got {key}"
                 )
 
         return Function(
@@ -405,9 +434,17 @@ class RigidbodyModelWithMuscles(BiorbdModel):
                 self.activations_mx,
                 self.muscle_fiber_lengths_mx,
                 self.muscle_fiber_velocities_mx,
+                self.muscle_fiber_velocity_initial_guesses_mx,
             ],
             [mx_function(**keys_to_mx)],
-            ["q", "qdot", "activations", "muscle_fiber_lengths", "muscle_fiber_velocities"],
+            [
+                "q",
+                "qdot",
+                "activations",
+                "muscle_fiber_lengths",
+                "muscle_fiber_velocities",
+                "muscle_fiber_velocity_initial_guesses",
+            ],
             ["output"],
         )
 

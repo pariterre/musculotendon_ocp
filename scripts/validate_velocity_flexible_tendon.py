@@ -34,15 +34,22 @@ def compute_muscle_fiber_velocities(
     lmdot = [np.ndarray(len(all_q.T)) for _ in range(model.nb_muscles)]
 
     muscle_fiber_lengths_dot_func = model.to_casadi_function(
-        model.muscle_fiber_velocities, "activations", "q", "qdot", "muscle_fiber_lengths"
+        model.muscle_fiber_velocities,
+        "activations",
+        "q",
+        "qdot",
+        "muscle_fiber_lengths",
+        "muscle_fiber_velocity_initial_guesses",
     )
 
+    lmdot_all_muscles = np.zeros((model.nb_muscles,))
     for i, (lengths, q, qdot) in enumerate(zip(all_muscle_lengths.T, all_q.T, all_qdot.T)):
         lmdot_all_muscles = muscle_fiber_lengths_dot_func(
             activations=activations,
             q=q,
             qdot=qdot,
             muscle_fiber_lengths=lengths,
+            muscle_fiber_velocity_initial_guesses=lmdot_all_muscles,
         )["output"].__array__()
         for m, vel_muscle in enumerate(lmdot_all_muscles):
             lmdot[m][i] = vel_muscle
@@ -59,7 +66,6 @@ def dynamics(
     dynamics_functions: list[Callable],
     model: RigidbodyModelWithMuscles,
     activations: np.ndarray,
-    is_linearized: bool,
 ) -> np.ndarray:
     muscle_fiber_lmdot_func, forward_dynamics_func = dynamics_functions
 
@@ -72,7 +78,7 @@ def dynamics(
         q=q,
         qdot=qdot,
         muscle_fiber_lengths=fiber_lengths,
-        muscle_fiber_velocities=0 if is_linearized else last_computed_lmdot[-1],
+        muscle_fiber_velocity_initial_guesses=last_computed_lmdot[-1],
     )["output"].__array__()[:, 0]
     last_computed_lmdot.append(fiber_lengths_dot)
 
@@ -87,15 +93,25 @@ def dynamics(
     return np.concatenate((fiber_lengths_dot, qdot, qddot))
 
 
-def prepare_muscle_fiber_velocities(model: RigidbodyModelWithMuscles, activations: MX, q: MX, qdot: MX) -> MX:
-    muscle_fiber_velocities = model.muscle_fiber_velocities(
-        activations=activations, q=q, qdot=qdot, muscle_fiber_lengths=model.muscle_fiber_lengths_mx
+def prepare_fiber_lmdot(model: RigidbodyModelWithMuscles, activations: MX, q: MX, qdot: MX) -> MX:
+    fiber_lmdot = model.muscle_fiber_velocities(
+        activations=activations,
+        q=q,
+        qdot=qdot,
+        muscle_fiber_lengths=model.muscle_fiber_lengths_mx,
+        muscle_fiber_velocity_initial_guesses=model.muscle_fiber_velocity_initial_guesses_mx,
     )
-    return muscle_fiber_velocities
+    return fiber_lmdot
 
 
 def prepare_forward_dynamics(model: RigidbodyModelWithMuscles, activations: MX, q: MX, qdot: MX) -> MX:
-    tau = model.muscle_joint_torque(activations, q, qdot, muscle_fiber_lengths=model.muscle_fiber_lengths_mx)
+    tau = model.muscle_joint_torque(
+        activations=activations,
+        q=q,
+        qdot=qdot,
+        muscle_fiber_lengths=model.muscle_fiber_lengths_mx,
+        muscle_fiber_velocities=model.muscle_fiber_velocities_mx,
+    )
     qddot = model.forward_dynamics(q, qdot, tau)
     return qddot
 
@@ -124,7 +140,7 @@ def main(
 
     dt = 0.001 if integration_method == precise_rk4 else 0.005
     t_span = (0, 0.5)
-    activations = np.ones(model.nb_muscles) * 0.1
+    activations = np.ones(model.nb_muscles) * 0.2
     q = np.ones(model.nb_q) * -0.24
     qdot = np.zeros(model.nb_qdot)
     initial_muscle_fiber_length = np.array(
@@ -133,18 +149,15 @@ def main(
     y0 = np.concatenate((initial_muscle_fiber_length, q, qdot))
 
     # Request the integration of the equations of motion
-    fiber_velocity_func = model.to_casadi_function(
-        partial(prepare_muscle_fiber_velocities, model=model), "activations", "q", "qdot"
-    )
+    fiber_lmdot_func = model.to_casadi_function(partial(prepare_fiber_lmdot, model=model), "activations", "q", "qdot")
     forward_dynamics_func = model.to_casadi_function(
         partial(prepare_forward_dynamics, model=model), "activations", "q", "qdot"
     )
     dynamics_functions = partial(
         dynamics,
-        dynamics_functions=(fiber_velocity_func, forward_dynamics_func),
+        dynamics_functions=(fiber_lmdot_func, forward_dynamics_func),
         model=model,
         activations=activations,
-        is_linearized=isinstance(compute_muscle_fiber_velocity_method, ComputeMuscleFiberVelocityMethods),
     )
     t, integrated = integration_method(dynamics_functions, y0, t_span, dt)
 
@@ -231,15 +244,13 @@ def time_main(methods: list[ComputeMuscleFiberVelocityMethods], repeat: int) -> 
 
 if __name__ == "__main__":
     print("Preparing the plots")
-    # Implicit sometime fails for no apparent reason, so it needs "error_on_fail" to be set to False
+
     main(
         compute_muscle_fiber_velocity_method=ComputeMuscleFiberVelocityMethods.FlexibleTendonLinearized(),
         color="r",
     )
     main(
-        compute_muscle_fiber_velocity_method=ComputeMuscleFiberVelocityMethods.FlexibleTendonImplicit(
-            error_on_fail=False
-        ),
+        compute_muscle_fiber_velocity_method=ComputeMuscleFiberVelocityMethods.FlexibleTendonImplicit(),
         color="g",
     )
     main(
@@ -251,14 +262,19 @@ if __name__ == "__main__":
         color="#00A5FF",
         integration_method=precise_rk4,
     )
+    main(
+        compute_muscle_fiber_velocity_method=ComputeMuscleFiberVelocityMethods.FlexibleTendonQuadratic(),
+        color="k",
+    )
 
     repeat = 20
-    print("Timing the script, each method will be repeated 20 times. This may take a while")
+    print(f"Timing the script, each method will be repeated {repeat} times. This may take a while")
     timings = time_main(
         [
-            "ComputeMuscleFiberVelocityMethods.FlexibleTendonImplicit(error_on_fail=False)",
+            "ComputeMuscleFiberVelocityMethods.FlexibleTendonImplicit()",
             "ComputeMuscleFiberVelocityMethods.FlexibleTendonExplicit()",
             "ComputeMuscleFiberVelocityMethods.FlexibleTendonLinearized()",
+            "ComputeMuscleFiberVelocityMethods.FlexibleTendonQuadratic()",
         ],
         repeat=repeat,
     )

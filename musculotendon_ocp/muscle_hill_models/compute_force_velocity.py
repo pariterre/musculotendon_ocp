@@ -35,11 +35,11 @@ class ComputeForceVelocityHillType:
     def inverse(self, force_velocity_inverse: MX) -> MX:
         return (1 / self.d2) * (sinh((1 / self.d1) * (force_velocity_inverse - self.d4)) - self.d3)
 
-    def derivative(self, normalized_muscle_fiber_velocity) -> tuple[MX, MX]:
+    def first_derivative(self, normalized_muscle_fiber_velocity) -> MX:
         p = normalized_muscle_fiber_velocity
         return (self.d1 * self.d2) / sqrt(1 + (self.d3 + self.d2 * p) ** 2)
 
-    def second_derivative(self, normalized_muscle_fiber_velocity) -> tuple[MX, MX]:
+    def second_derivative(self, normalized_muscle_fiber_velocity) -> MX:
         p = normalized_muscle_fiber_velocity
         return -self.d1 * self.d2**2 * (self.d2 * p + self.d3) / ((self.d2 * p + self.d3) ** 2 + 1) ** (3 / 2)
 
