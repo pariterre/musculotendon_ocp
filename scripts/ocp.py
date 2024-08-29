@@ -6,6 +6,7 @@ from bioptim import (
     ConfigureProblem,
     ObjectiveFcn,
     ObjectiveList,
+    ConstraintList,
     BoundsList,
     OdeSolver,
     OdeSolverBase,
@@ -16,6 +17,8 @@ from bioptim import (
     ControlType,
     DynamicsFunctions,
     Node,
+    PenaltyController,
+    MultinodeConstraintList,
 )
 from casadi import SX, MX, vertcat
 import numpy as np
@@ -30,18 +33,35 @@ from musculotendon_ocp import (
 
 
 # TODO add a constraint at node zero for the muscle_length (instead of bound) so it adjust to the activations?
-# TODO Implement the second order approximation
+# TODO add pennation angle
+# TODO Validate the muscle forces against the tendon forces
+# TODO OCP tracking a trajectory
+# TODO Test a standardized panel of muscles
+# TODO COLLOCATION
+# TODO Rigid tendon
+
+# TODO Change initial guesses for muscle_velocities
 
 
-def prepare_muscle_fiber_velocities(model: RigidbodyModelWithMuscles, activations: MX, q: MX, qdot: MX) -> MX:
-    muscle_fiber_velocities = model.muscle_fiber_velocities(
-        activations=activations, q=q, qdot=qdot, muscle_fiber_lengths=model.muscle_fiber_lengths_mx
+def prepare_fiber_lmdot(model: RigidbodyModelWithMuscles, activations: MX, q: MX, qdot: MX) -> MX:
+    fiber_lmdot = model.muscle_fiber_velocities(
+        activations=activations,
+        q=q,
+        qdot=qdot,
+        muscle_fiber_lengths=model.muscle_fiber_lengths_mx,
+        muscle_fiber_velocity_initial_guesses=model.muscle_fiber_velocity_initial_guesses_mx,
     )
-    return muscle_fiber_velocities
+    return fiber_lmdot
 
 
 def prepare_forward_dynamics(model: RigidbodyModelWithMuscles, activations: MX, q: MX, qdot: MX) -> MX:
-    tau = model.muscle_joint_torque(activations, q, qdot, muscle_fiber_lengths=model.muscle_fiber_lengths_mx)
+    tau = model.muscle_joint_torque(
+        activations=activations,
+        q=q,
+        qdot=qdot,
+        muscle_fiber_lengths=model.muscle_fiber_lengths_mx,
+        muscle_fiber_velocities=model.muscle_fiber_velocities_mx,
+    )
     qddot = model.forward_dynamics(q, qdot, tau)
     return qddot
 
@@ -84,17 +104,18 @@ def custom_dynamics(
 
     q = DynamicsFunctions.get(nlp.states["q"], states)
     qdot = DynamicsFunctions.get(nlp.states["qdot"], states)
-    muscle_fiber_lengths = DynamicsFunctions.get(nlp.states["muscles"], states)
+    muscle_fiber_lengths = DynamicsFunctions.get(nlp.states["muscles_fiber_lengths"], states)
+    muscle_fiber_velocities = DynamicsFunctions.get(nlp.controls["muscles_fiber_velocities"], controls)
     muscle_activations = DynamicsFunctions.get(nlp.controls["muscles"], controls)
 
     muscle_fiber_lengths_dot = model.to_casadi_function(
-        partial(prepare_muscle_fiber_velocities, model=model), "activations", "q", "qdot"
+        partial(prepare_fiber_lmdot, model=model), "activations", "q", "qdot"
     )(
         activations=muscle_activations,
         q=q,
         qdot=qdot,
         muscle_fiber_lengths=muscle_fiber_lengths,
-        muscle_fiber_velocities=0,  # TODO Check if it is possible to use a better initial guess
+        muscle_fiber_velocity_initial_guesses=muscle_fiber_velocities,
     )[
         "output"
     ]
@@ -128,13 +149,26 @@ def custom_configure(ocp: OptimalControlProgram, nlp: NonLinearProgram, numerica
     # States
     ConfigureProblem.configure_q(ocp, nlp, as_states=True, as_controls=False)
     ConfigureProblem.configure_qdot(ocp, nlp, as_states=True, as_controls=False)
-    ConfigureProblem.configure_muscles(ocp, nlp, as_states=True, as_controls=False)
+    ConfigureProblem.configure_new_variable(
+        "muscles_fiber_lengths", nlp.model.muscle_names, ocp, nlp, as_states=True, as_controls=False
+    )
 
     # Control
     ConfigureProblem.configure_muscles(ocp, nlp, as_states=False, as_controls=True)
+    ConfigureProblem.configure_new_variable(
+        "muscles_fiber_velocities", nlp.model.muscle_names, ocp, nlp, as_states=False, as_controls=True
+    )
 
     # Dynamics
     ConfigureProblem.configure_dynamics_function(ocp, nlp, custom_dynamics)
+
+
+def fiber_lmdot_equals_velocities(controllers: list[PenaltyController]) -> MX:
+    return controllers[0].controls["muscles_fiber_velocities"].cx - controllers[1].states["muscles_fiber_lengths"].cx
+
+
+def fiber_lmdot_equals_velocities_end(controller: PenaltyController) -> MX:
+    return controller.controls["muscles_fiber_velocities"].cx - controller.states["muscles_fiber_lengths"].cx
 
 
 def prepare_ocp(
@@ -198,6 +232,8 @@ def prepare_ocp(
     # Declare bioptim variables
     dynamics = DynamicsList()
     objective_functions = ObjectiveList()
+    constraints = ConstraintList()
+    multinode_constraints = MultinodeConstraintList()
     x_bounds = BoundsList()
     x_init = InitialGuessList()
     u_bounds = BoundsList()
@@ -220,13 +256,24 @@ def prepare_ocp(
     x_init["q"] = q0
 
     # Muscle lengths are stricly positive and start with muscle fiber lengths at equilibrium
-    x_bounds["muscles"] = [0] * nb_muscles, [np.inf] * nb_muscles
-    x_bounds["muscles"][:, 0] = equilibrated_muscle_lengths
-    x_init["muscles"] = equilibrated_muscle_lengths
+    x_bounds["muscles_fiber_lengths"] = [0] * nb_muscles, [np.inf] * nb_muscles
+    x_bounds["muscles_fiber_lengths"][:, 0] = equilibrated_muscle_lengths
+    x_init["muscles_fiber_lengths"] = equilibrated_muscle_lengths
 
     # Muscle activations are between activation_min and activation_max
     u_bounds["muscles"] = activations_min, activations_max
     u_init["muscles"] = activations_init
+
+    # Make sure the virtual muscle fiber velocities (as controls) are the same as start of next node of the real (as states).
+    # That allows us (at convergence) to access the integrated value as initial guess
+    for i in range(shooting_count):
+        multinode_constraints.add(
+            fiber_lmdot_equals_velocities,
+            nodes_phase=(0, 0),
+            nodes=(i, i + 1),
+        )
+    if control_type == ControlType.LINEAR_CONTINUOUS:
+        constraints.add(fiber_lmdot_equals_velocities_end, node=Node.END)
 
     return OptimalControlProgram(
         model,
@@ -238,6 +285,8 @@ def prepare_ocp(
         x_init=x_init,
         u_init=u_init,
         objective_functions=objective_functions,
+        constraints=constraints,
+        multinode_constraints=multinode_constraints,
         use_sx=use_sx,
         ode_solver=ode_solver,
         control_type=control_type,
@@ -258,16 +307,16 @@ def main():
                 compute_muscle_fiber_length=ComputeMuscleFiberLengthMethods.AsVariable(),
                 compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityMethods.FlexibleTendonLinearized(),
             ),
-            MuscleHillModels.FlexibleTendon(
-                name="Mus1",
-                maximal_force=1000,
-                optimal_length=0.1,
-                tendon_slack_length=0.16,
-                compute_force_damping=ComputeForceDampingMethods.Linear(factor=0.1),
-                maximal_velocity=5.0,
-                compute_muscle_fiber_length=ComputeMuscleFiberLengthMethods.AsVariable(),
-                compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityMethods.FlexibleTendonLinearized(),
-            ),
+            # MuscleHillModels.FlexibleTendon(
+            #     name="Mus1",
+            #     maximal_force=1000,
+            #     optimal_length=0.1,
+            #     tendon_slack_length=0.16,
+            #     compute_force_damping=ComputeForceDampingMethods.Linear(factor=0.1),
+            #     maximal_velocity=5.0,
+            #     compute_muscle_fiber_length=ComputeMuscleFiberLengthMethods.AsVariable(),
+            #     compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityMethods.FlexibleTendonLinearized(),
+            # ),
         ],
     )
 
@@ -275,7 +324,7 @@ def main():
         model=model,
         final_time=0.5,
         q0=np.array([-0.22]),
-        qf=np.array([-0.26]),
+        qf=np.array([-0.30]),
         ode_solver=OdeSolver.RK4(),
     )
 
