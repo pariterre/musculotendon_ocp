@@ -1,17 +1,22 @@
 from functools import cached_property
-from typing import Iterable, Callable, override, Any
+from typing import Iterable, Callable, override, Any, Self
 
 from bioptim import BiorbdModel
 import biorbd_casadi as biorbd
 from casadi import MX, DM, Function, vertcat
 
+from ..muscle_hill_models import MuscleHillModels
 from ..muscle_hill_models.muscle_hill_model_abstract import MuscleHillModelAbstract
 from ..muscle_hill_models.compute_muscle_fiber_length import (
+    ComputeMuscleFiberLengthMethods,
     ComputeMuscleFiberLengthAsVariable,
     ComputeMuscleFiberLengthRigidTendon,
     ComputeMuscleFiberLengthInstantaneousEquilibrium,
 )
-from ..muscle_hill_models.compute_muscle_fiber_velocity import ComputeMuscleFiberVelocityAsVariable
+from ..muscle_hill_models.compute_muscle_fiber_velocity import (
+    ComputeMuscleFiberVelocityMethods,
+    ComputeMuscleFiberVelocityAsVariable,
+)
 
 
 class RigidbodyModelWithMuscles(BiorbdModel):
@@ -26,6 +31,37 @@ class RigidbodyModelWithMuscles(BiorbdModel):
             self._muscle_index_to_biorbd_model.append(biorbd_muscle_names.index(muscle.name))
 
         self.muscles = muscles
+
+    def copy_with_with_all_flexible_tendons(self) -> Self:
+        # TODO Test this
+        new_muscles = []
+        for muscle in self.muscles:
+            new_muscles.append(
+                MuscleHillModels.FlexibleTendon(
+                    name=muscle.name,
+                    maximal_force=muscle.maximal_force,
+                    optimal_length=muscle.optimal_length,
+                    tendon_slack_length=muscle.tendon_slack_length,
+                    maximal_velocity=muscle.maximal_velocity,
+                    compute_force_passive=muscle.compute_force_passive,
+                    compute_force_active=muscle.compute_force_active,
+                    compute_force_velocity=muscle.compute_force_velocity,
+                    compute_force_damping=muscle.compute_force_damping,
+                    compute_pennation_angle=muscle.compute_pennation_angle,
+                    compute_muscle_fiber_length=ComputeMuscleFiberLengthMethods.AsVariable(),
+                    compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityMethods.FlexibleTendonExplicit(),
+                )
+            )
+
+            # Keep the same mx_variables though
+            new_muscles[-1].activation_mx = muscle.activation_mx
+            new_muscles[-1].muscle_fiber_length_mx = muscle.muscle_fiber_length_mx
+            new_muscles[-1].muscle_fiber_velocity_mx = muscle.muscle_fiber_velocity_mx
+            new_muscles[-1].tendon_length_mx = muscle.tendon_length_mx
+            new_muscles[-1].compute_muscle_fiber_length.mx_variable = muscle.compute_muscle_fiber_length.mx_variable
+            new_muscles[-1].compute_muscle_fiber_velocity.mx_variable = muscle.compute_muscle_fiber_velocity.mx_variable
+
+        return RigidbodyModelWithMuscles(self.path, muscles=new_muscles)
 
     @cached_property
     def q_mx(self) -> MX:

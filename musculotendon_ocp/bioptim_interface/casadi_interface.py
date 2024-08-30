@@ -2,6 +2,59 @@ from bioptim import NonLinearProgram, DynamicsFunctions
 from casadi import MX, Function
 import numpy as np
 
+from ..rigidbody_models import RigidbodyModelWithMuscles
+
+
+def prepare_forward_dynamics_mx(model: RigidbodyModelWithMuscles, activations: MX, q: MX, qdot: MX) -> MX:
+    # TODO Test this
+    tau = model.muscle_joint_torque(
+        activations=activations,
+        q=q,
+        qdot=qdot,
+        muscle_fiber_lengths=model.muscle_fiber_lengths_mx,
+        muscle_fiber_velocities=model.muscle_fiber_velocities_mx,
+    )
+    qddot = model.forward_dynamics(q, qdot, tau)
+    return qddot
+
+
+def prepare_muscle_forces_mx(
+    # TODO Test this
+    model: RigidbodyModelWithMuscles,
+    activations: MX,
+    q: MX,
+    qdot: MX,
+    muscle_fiber_lengths: MX,
+    muscle_fiber_velocities: MX,
+) -> MX:
+    muscle_forces = model.muscle_forces(
+        activations=activations,
+        q=q,
+        qdot=qdot,
+        muscle_fiber_lengths=muscle_fiber_lengths,
+        muscle_fiber_velocities=muscle_fiber_velocities,
+    )
+    return muscle_forces
+
+
+def prepare_fiber_lmdot_mx(model: RigidbodyModelWithMuscles, activations: MX, q: MX, qdot: MX) -> MX:
+    # TODO Test this
+    fiber_lmdot = model.muscle_fiber_velocities(
+        activations=activations,
+        q=q,
+        qdot=qdot,
+        muscle_fiber_lengths=model.muscle_fiber_lengths_mx,
+        muscle_fiber_velocity_initial_guesses=model.muscle_fiber_velocity_initial_guesses_mx,
+    )
+
+    return fiber_lmdot
+
+
+def prepare_tendon_forces_mx(model: RigidbodyModelWithMuscles, activations: MX, q: MX, qdot: MX) -> MX:
+    # TODO Test this
+    tendon_forces = model.tendon_forces(activations=activations, q=q, qdot=qdot)
+    return tendon_forces
+
 
 def casadi_function_to_bioptim_graph(
     function_to_graph: Function,
