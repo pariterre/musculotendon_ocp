@@ -29,10 +29,8 @@ from musculotendon_ocp import (
     ComputeForceDampingMethods,
     ComputeMuscleFiberLengthMethods,
     ComputeMuscleFiberVelocityMethods,
-    add_tendon_forces_plot_to_ocp,
-    add_muscle_forces_plot_to_ocp,
-    prepare_forward_dynamics_mx,
-    prepare_fiber_lmdot_mx,
+    CasadiHelpers,
+    PlotHelpers,
 )
 
 
@@ -145,9 +143,11 @@ def custom_configure(ocp: OptimalControlProgram, nlp: NonLinearProgram, numerica
     # Dynamics
     model: RigidbodyModelWithMuscles = nlp.model
     muscle_fiber_length_dot_func = model.to_casadi_function(
-        partial(prepare_fiber_lmdot_mx, model=model), "activations", "q", "qdot"
+        partial(CasadiHelpers.prepare_fiber_lmdot_mx, model=model), "activations", "q", "qdot"
     )
-    qddot_func = model.to_casadi_function(partial(prepare_forward_dynamics_mx, model=model), "activations", "q", "qdot")
+    qddot_func = model.to_casadi_function(
+        partial(CasadiHelpers.prepare_forward_dynamics_mx, model=model), "activations", "q", "qdot"
+    )
     ConfigureProblem.configure_dynamics_function(
         ocp,
         nlp,
@@ -283,12 +283,12 @@ def prepare_ocp(
     )
 
     # Add the tendon forces to the plot
-    add_tendon_forces_plot_to_ocp(ocp=ocp, model=model)
-    add_muscle_forces_plot_to_ocp(ocp=ocp, model=model)
+    PlotHelpers.add_tendon_forces_plot_to_ocp(ocp=ocp, model=model)
+    PlotHelpers.add_muscle_forces_plot_to_ocp(ocp=ocp, model=model)
 
     model_flexible_explicit = model.copy_with_with_all_flexible_tendons()
-    add_tendon_forces_plot_to_ocp(ocp=ocp, model=model_flexible_explicit)
-    add_muscle_forces_plot_to_ocp(ocp=ocp, model=model_flexible_explicit)
+    PlotHelpers.add_tendon_forces_plot_to_ocp(ocp=ocp, model=model_flexible_explicit)
+    PlotHelpers.add_muscle_forces_plot_to_ocp(ocp=ocp, model=model_flexible_explicit)
 
     return ocp
 

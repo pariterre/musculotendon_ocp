@@ -34,6 +34,95 @@ def test_muscle_biorbd_model_wrong_constructor():
         )
 
 
+def test_copy_with_with_all_flexible_tendons():
+    model = RigidbodyModels.WithMuscles(
+        model_path,
+        muscles=[
+            MuscleHillModels.RigidTendon(
+                name="Mus1", maximal_force=500, optimal_length=0.1, tendon_slack_length=0.123, maximal_velocity=5.0
+            ),
+            MuscleHillModels.FlexibleTendon(
+                name="Mus1",
+                maximal_force=500,
+                optimal_length=0.1,
+                tendon_slack_length=0.123,
+                maximal_velocity=5.0,
+                compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityMethods.FlexibleTendonExplicit(),
+            ),
+            MuscleHillModels.FlexibleTendon(
+                name="Mus1",
+                maximal_force=500,
+                optimal_length=0.1,
+                tendon_slack_length=0.123,
+                maximal_velocity=5.0,
+                compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityMethods.FlexibleTendonImplicit(),
+            ),
+            MuscleHillModels.FlexibleTendon(
+                name="Mus1",
+                maximal_force=500,
+                optimal_length=0.1,
+                tendon_slack_length=0.123,
+                maximal_velocity=5.0,
+                compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityMethods.FlexibleTendonLinearized(),
+            ),
+            MuscleHillModels.FlexibleTendon(
+                name="Mus1",
+                maximal_force=500,
+                optimal_length=0.1,
+                tendon_slack_length=0.123,
+                maximal_velocity=5.0,
+                compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityMethods.FlexibleTendonQuadratic(),
+            ),
+        ],
+    )
+
+    copied_model = model.copy_with_with_all_flexible_tendons()
+    assert copied_model.path == model.path
+    assert copied_model.nb_muscles == 5
+
+    # Test all the muscles are of type flexible with explicit computation of the fiber velocity
+    for muscles in copied_model.muscles:
+        assert isinstance(muscles, MuscleHillModels.FlexibleTendon.value)
+        assert isinstance(
+            muscles.compute_muscle_fiber_velocity, ComputeMuscleFiberVelocityMethods.FlexibleTendonExplicit.value
+        )
+
+    # Test that it did not modify the original model
+    assert model.nb_muscles == 5
+    for i, muscles in enumerate(model.muscles):
+        if i == 0:
+            assert isinstance(muscles, MuscleHillModels.RigidTendon.value)
+        else:
+            assert isinstance(muscles, MuscleHillModels.FlexibleTendon.value)
+
+        if i == 1:
+            assert isinstance(
+                muscles.compute_muscle_fiber_velocity, ComputeMuscleFiberVelocityMethods.FlexibleTendonExplicit.value
+            )
+        else:
+            assert not isinstance(
+                muscles.compute_muscle_fiber_velocity, ComputeMuscleFiberVelocityMethods.FlexibleTendonExplicit.value
+            )
+
+    # Test that all the mx_variables are shared
+    assert id(copied_model.q_mx) == id(model.q_mx)
+    assert id(copied_model.qdot_mx) == id(model.qdot_mx)
+    assert id(copied_model.activations_mx) == id(model.activations_mx)
+    assert id(copied_model.muscle_fiber_lengths_mx) == id(model.muscle_fiber_lengths_mx)
+    assert id(copied_model.muscle_fiber_velocities_mx) == id(model.muscle_fiber_velocities_mx)
+    assert id(copied_model.muscle_fiber_velocity_initial_guesses_mx) == id(
+        model.muscle_fiber_velocity_initial_guesses_mx
+    )
+
+    for copied_muscle, muscle in zip(copied_model.muscles, model.muscles):
+        assert id(copied_muscle.compute_muscle_fiber_length.mx_variable) == id(
+            muscle.compute_muscle_fiber_length.mx_variable
+        )
+        assert id(copied_muscle.compute_muscle_fiber_velocity.mx_variable) == id(
+            muscle.compute_muscle_fiber_velocity.mx_variable
+        )
+
+
 def test_muscle_biorbd_model_number_of_muscles():
     model = RigidbodyModels.WithMuscles(
         model_path,

@@ -48,8 +48,12 @@ class RigidbodyModelWithMuscles(BiorbdModel):
                     compute_force_velocity=muscle.compute_force_velocity,
                     compute_force_damping=muscle.compute_force_damping,
                     compute_pennation_angle=muscle.compute_pennation_angle,
-                    compute_muscle_fiber_length=ComputeMuscleFiberLengthMethods.AsVariable(),
-                    compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityMethods.FlexibleTendonExplicit(),
+                    compute_muscle_fiber_length=ComputeMuscleFiberLengthMethods.AsVariable(
+                        mx_symbolic=muscle.compute_muscle_fiber_length.mx_variable
+                    ),
+                    compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityMethods.FlexibleTendonExplicit(
+                        mx_symbolic=muscle.compute_muscle_fiber_velocity.mx_variable
+                    ),
                 )
             )
 
@@ -58,10 +62,16 @@ class RigidbodyModelWithMuscles(BiorbdModel):
             new_muscles[-1].muscle_fiber_length_mx = muscle.muscle_fiber_length_mx
             new_muscles[-1].muscle_fiber_velocity_mx = muscle.muscle_fiber_velocity_mx
             new_muscles[-1].tendon_length_mx = muscle.tendon_length_mx
-            new_muscles[-1].compute_muscle_fiber_length.mx_variable = muscle.compute_muscle_fiber_length.mx_variable
-            new_muscles[-1].compute_muscle_fiber_velocity.mx_variable = muscle.compute_muscle_fiber_velocity.mx_variable
 
-        return RigidbodyModelWithMuscles(self.path, muscles=new_muscles)
+        new_model = RigidbodyModelWithMuscles(self.path, muscles=new_muscles)
+        new_model.q_mx = self.q_mx
+        new_model.qdot_mx = self.qdot_mx
+        new_model.activations_mx = self.activations_mx
+        new_model.muscle_fiber_lengths_mx = self.muscle_fiber_lengths_mx
+        new_model.muscle_fiber_velocities_mx = self.muscle_fiber_velocities_mx
+        new_model.muscle_fiber_velocity_initial_guesses_mx = self.muscle_fiber_velocity_initial_guesses_mx
+
+        return new_model
 
     @cached_property
     def q_mx(self) -> MX:
@@ -125,7 +135,7 @@ class RigidbodyModelWithMuscles(BiorbdModel):
         """
         return [muscle.name for muscle in self.muscles]
 
-    @property
+    @cached_property
     def muscle_fiber_lengths_mx(self) -> MX:
         variables = []
         for muscle in self.muscles:
@@ -133,7 +143,7 @@ class RigidbodyModelWithMuscles(BiorbdModel):
                 variables.append(muscle.compute_muscle_fiber_length.mx_variable)
         return vertcat(*variables)
 
-    @property
+    @cached_property
     def muscle_fiber_velocities_mx(self) -> MX:
         variables = []
         for muscle in self.muscles:
