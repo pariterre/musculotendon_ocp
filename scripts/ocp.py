@@ -1,5 +1,4 @@
 from functools import partial
-from typing import Callable
 
 from bioptim import (
     OptimalControlProgram,
@@ -22,7 +21,7 @@ from bioptim import (
     MultinodeConstraintList,
     PlotType,
 )
-from casadi import SX, MX, vertcat
+from casadi import SX, MX, vertcat, Function
 import numpy as np
 from musculotendon_ocp import (
     RigidbodyModels,
@@ -31,11 +30,11 @@ from musculotendon_ocp import (
     ComputeForceDampingMethods,
     ComputeMuscleFiberLengthMethods,
     ComputeMuscleFiberVelocityMethods,
+    casadi_function_to_bioptim_graph,
 )
 
 
 # TODO add pennation angle
-# TODO Validate the muscle forces against the tendon forces
 # TODO OCP tracking a trajectory
 # TODO Test a standardized panel of muscles
 # TODO COLLOCATION
@@ -84,6 +83,24 @@ def prepare_tendon_forces(model: RigidbodyModelWithMuscles, activations: MX, q: 
     return tendon_forces
 
 
+def prepare_muscle_forces(
+    model: RigidbodyModelWithMuscles,
+    activations: MX,
+    q: MX,
+    qdot: MX,
+    muscle_fiber_lengths: MX,
+    muscle_fiber_velocities: MX,
+) -> MX:
+    muscle_forces = model.muscle_forces(
+        activations=activations,
+        q=q,
+        qdot=qdot,
+        muscle_fiber_lengths=muscle_fiber_lengths,
+        muscle_fiber_velocities=muscle_fiber_velocities,
+    )
+    return muscle_forces
+
+
 def custom_dynamics(
     time: MX | SX,
     states: MX | SX,
@@ -92,6 +109,8 @@ def custom_dynamics(
     algebraic_states: MX | SX,
     numerical_timeseries: MX | SX,
     nlp: NonLinearProgram,
+    muscle_fiber_length_dot_func: Function,
+    qddot_func: Function,
 ) -> DynamicsEvaluation:
     """
     The custom dynamics function that provides the derivative of the states: dxdt = f(x, u, p)
@@ -118,26 +137,21 @@ def custom_dynamics(
     The derivative of the states in the tuple[MX | SX] format
     """
 
-    model: RigidbodyModelWithMuscles = nlp.model
     q = DynamicsFunctions.get(nlp.states["q"], states)
     qdot = DynamicsFunctions.get(nlp.states["qdot"], states)
     muscle_fiber_lengths = DynamicsFunctions.get(nlp.states["muscles_fiber_lengths"], states)
     muscle_fiber_velocities = DynamicsFunctions.get(nlp.controls["muscles_fiber_velocities"], controls)
     muscle_activations = DynamicsFunctions.get(nlp.controls["muscles"], controls)
 
-    muscle_fiber_lengths_dot = model.to_casadi_function(
-        partial(prepare_fiber_lmdot, model=model), "activations", "q", "qdot"
-    )(
+    muscle_fiber_lengths_dot = muscle_fiber_length_dot_func(
         activations=muscle_activations,
         q=q,
         qdot=qdot,
         muscle_fiber_lengths=muscle_fiber_lengths,
         muscle_fiber_velocity_initial_guesses=muscle_fiber_velocities,
-    )[
-        "output"
-    ]
+    )["output"]
 
-    qddot = model.to_casadi_function(partial(prepare_forward_dynamics, model=model), "activations", "q", "qdot")(
+    qddot = qddot_func(
         activations=muscle_activations,
         q=q,
         qdot=qdot,
@@ -177,7 +191,16 @@ def custom_configure(ocp: OptimalControlProgram, nlp: NonLinearProgram, numerica
     )
 
     # Dynamics
-    ConfigureProblem.configure_dynamics_function(ocp, nlp, custom_dynamics)
+    model: RigidbodyModelWithMuscles = nlp.model
+    muscle_fiber_length_dot_func = model.to_casadi_function(
+        partial(prepare_fiber_lmdot, model=model), "activations", "q", "qdot"
+    )
+    qddot_func = model.to_casadi_function(partial(prepare_forward_dynamics, model=model), "activations", "q", "qdot")
+    ConfigureProblem.configure_dynamics_function(
+        ocp,
+        nlp,
+        partial(custom_dynamics, muscle_fiber_length_dot_func=muscle_fiber_length_dot_func, qddot_func=qddot_func),
+    )
 
 
 def fiber_lmdot_equals_velocities(controllers: list[PenaltyController]) -> MX:
@@ -191,37 +214,13 @@ def fiber_lmdot_equals_velocities_end(controller: PenaltyController) -> MX:
     return controller.controls["muscles_fiber_velocities"].cx
 
 
-def compute_tendon_forces(tendon_forces_func: Callable, nlp: NonLinearProgram, states: MX, controls: MX):
-    all_q = DynamicsFunctions.get(nlp.states["q"], states)
-    all_qdot = DynamicsFunctions.get(nlp.states["qdot"], states)
-    all_muscle_fiber_lengths = DynamicsFunctions.get(nlp.states["muscles_fiber_lengths"], states)
-    all_muscle_fiber_velocities = DynamicsFunctions.get(nlp.controls["muscles_fiber_velocities"], controls)
-    all_activations = DynamicsFunctions.get(nlp.controls["muscles"], controls)
-
-    tendon_forces = []
-    for q, qdot, muscle_fiber_lengths, muscle_fiber_velocities, muscle_activations in zip(
-        all_q.T, all_qdot.T, all_muscle_fiber_lengths.T, all_muscle_fiber_velocities.T, all_activations.T
-    ):
-        tendon_forces.append(
-            tendon_forces_func(
-                activations=muscle_activations,
-                q=q,
-                qdot=qdot,
-                muscle_fiber_lengths=muscle_fiber_lengths,
-                muscle_fiber_velocity_initial_guesses=muscle_fiber_velocities,
-            )["output"]
-        )
-
-    return np.array(tendon_forces)[:, :, 0]
-
-
 def prepare_ocp(
     model: RigidbodyModelWithMuscles,
     final_time: float,
     q0: np.ndarray,
     qf: np.ndarray,
-    ode_solver: OdeSolverBase = OdeSolver.RK4(),
-    use_sx: bool = True,
+    ode_solver: OdeSolverBase,
+    use_sx: bool,
 ) -> OptimalControlProgram:
     """
     Prepare the ocp
@@ -338,13 +337,36 @@ def prepare_ocp(
     # Add the tendon forces to the plot
     ocp.add_plot(
         "Forces",
-        lambda t0, phases_dt, node_idx, x, u, p, a, d: compute_tendon_forces(
-            model.to_casadi_function(partial(prepare_tendon_forces, model=model), "activations", "q", "qdot"),
-            ocp.nlp[0],
-            states=x,
-            controls=u,
+        lambda *args: casadi_function_to_bioptim_graph(
+            function_to_graph=model.to_casadi_function(
+                partial(prepare_tendon_forces, model=model), "activations", "q", "qdot"
+            ),
+            muscle_fiber_length_dot_func=None,
+            nlp=ocp.nlp[0],
+            states=args[3],
+            controls=args[4],
         ),
         plot_type=PlotType.INTEGRATED,
+    )
+    ocp.add_plot(
+        "Forces",
+        lambda *args: casadi_function_to_bioptim_graph(
+            function_to_graph=model.to_casadi_function(
+                partial(prepare_muscle_forces, model=model),
+                "activations",
+                "q",
+                "qdot",
+                "muscle_fiber_lengths",
+                "muscle_fiber_velocities",
+            ),
+            muscle_fiber_length_dot_func=model.to_casadi_function(
+                partial(prepare_fiber_lmdot, model=model), "activations", "q", "qdot"
+            ),
+            nlp=ocp.nlp[0],
+            states=args[3],
+            controls=args[4],
+        ),
+        plot_type=PlotType.STEP,
     )
 
     return ocp
@@ -370,18 +392,18 @@ def main():
                 compute_force_damping=ComputeForceDampingMethods.Linear(factor=0.1),
                 maximal_velocity=5.0,
                 compute_muscle_fiber_length=ComputeMuscleFiberLengthMethods.AsVariable(),
-                compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityMethods.FlexibleTendonLinearized(),
+                compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityMethods.FlexibleTendonImplicit(),
             ),
-            MuscleHillModels.FlexibleTendon(
-                name="Mus1",
-                maximal_force=1000,
-                optimal_length=0.1,
-                tendon_slack_length=0.16,
-                compute_force_damping=ComputeForceDampingMethods.Linear(factor=0.1),
-                maximal_velocity=5.0,
-                compute_muscle_fiber_length=ComputeMuscleFiberLengthMethods.AsVariable(),
-                compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityMethods.FlexibleTendonLinearized(),
-            ),
+            # MuscleHillModels.FlexibleTendon(
+            #     name="Mus1",
+            #     maximal_force=1000,
+            #     optimal_length=0.1,
+            #     tendon_slack_length=0.16,
+            #     compute_force_damping=ComputeForceDampingMethods.Linear(factor=0.1),
+            #     maximal_velocity=5.0,
+            #     compute_muscle_fiber_length=ComputeMuscleFiberLengthMethods.AsVariable(),
+            #     compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityMethods.FlexibleTendonLinearized(),
+            # ),
         ],
     )
 
@@ -391,6 +413,7 @@ def main():
         q0=np.array([-0.22]),
         qf=np.array([-0.30]),
         ode_solver=OdeSolver.RK4(),
+        use_sx=False,
     )
 
     # --- Solve the program --- #
