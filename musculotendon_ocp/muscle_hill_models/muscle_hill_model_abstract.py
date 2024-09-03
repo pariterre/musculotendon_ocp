@@ -160,6 +160,23 @@ class ComputePennationAngle(Protocol):
             The element with the pennation angle applied
         """
 
+    def remove(self, muscle_fiber_length: MX, element: MX) -> MX:
+        """
+        Remove the pennation angle from an element
+
+        Parameters
+        ----------
+        muscle_fiber_length: MX
+            The muscle length
+        element: MX
+            The element to remove the pennation angle from
+
+        Returns
+        -------
+        MX
+            The element with the pennation angle removed
+        """
+
 
 class ComputeMuscleFiberLength(Protocol):
     def __call__(

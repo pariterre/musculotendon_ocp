@@ -22,6 +22,9 @@ class ComputePennationAngleConstant:
     def apply(self, muscle_fiber_length: MX, element: MX) -> MX:
         return cos(self(muscle_fiber_length)) * element
 
+    def remove(self, muscle_fiber_length: MX, element: MX) -> MX:
+        return element / cos(self(muscle_fiber_length))
+
 
 class ComputePennationAngleWrtMuscleFiberLength:
     def __init__(self, optimal_pennation_angle: float = 0.0, optimal_muscle_fiber_length: float = 0.0):
@@ -36,6 +39,9 @@ class ComputePennationAngleWrtMuscleFiberLength:
 
     def apply(self, muscle_fiber_length: MX, element: MX) -> MX:
         return cos(self(muscle_fiber_length)) * element
+
+    def remove(self, muscle_fiber_length: MX, element: MX) -> MX:
+        return element / cos(self(muscle_fiber_length))
 
 
 class ComputePennationAngleMethods(Enum):

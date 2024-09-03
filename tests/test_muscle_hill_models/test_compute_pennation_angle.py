@@ -41,6 +41,22 @@ def test_compute_pennation_angle_constant():
     assert_almost_equal(pennation_angle_model.apply(1.0, 0.0), 0.0)
     assert_almost_equal(pennation_angle_model.apply(1.1, 0.5), pennation_angle_model.apply(1.2, 0.5))
 
+    assert_almost_equal(pennation_angle_model.remove(1.1, 1.0), 1.0050209184004553)
+    assert_almost_equal(pennation_angle_model.remove(1.1, 0.5), 0.5025104592002276)
+    assert_almost_equal(pennation_angle_model.remove(1.1, 0.0), 0.0)
+    assert_almost_equal(pennation_angle_model.remove(1.1, -0.5), -0.5025104592002276)
+    assert_almost_equal(pennation_angle_model.remove(1.1, -1.0), -1.0050209184004553)
+
+    assert_almost_equal(pennation_angle_model.remove(1.2, 1.0), 1.0050209184004553)
+    assert_almost_equal(pennation_angle_model.remove(1.2, 0.5), 0.5025104592002276)
+    assert_almost_equal(pennation_angle_model.remove(1.2, 0.0), 0.0)
+    assert_almost_equal(pennation_angle_model.remove(1.2, -0.5), -0.5025104592002276)
+    assert_almost_equal(pennation_angle_model.remove(1.2, -1.0), -1.0050209184004553)
+
+    # Test values based on qualitative behavioremove (increasing exponential function)
+    assert_almost_equal(pennation_angle_model.remove(1.0, 0.0), 0.0)
+    assert pennation_angle_model.apply(1.1, 0.5) == pennation_angle_model.apply(1.2, 0.5)
+
 
 def test_compute_pennation_angle_wrt_muscle_fiber_length():
     with pytest.raises(ValueError, match="The optimal pennation angle must be positive"):
@@ -76,5 +92,27 @@ def test_compute_pennation_angle_wrt_muscle_fiber_length():
         1.1, 0.5
     )
     assert pennation_angle_model.apply(1.2, 0.5) != ComputePennationAngleMethods.Constant(pennation_angle=0.1).apply(
+        1.2, 0.5
+    )
+
+    assert_almost_equal(pennation_angle_model.remove(1.1, 1.0), 1.0050209184004553)
+    assert_almost_equal(pennation_angle_model.remove(1.1, 0.5), 0.5025104592002276)
+    assert_almost_equal(pennation_angle_model.remove(1.1, 0.0), 0.0)
+    assert_almost_equal(pennation_angle_model.remove(1.1, -0.5), -0.5025104592002276)
+    assert_almost_equal(pennation_angle_model.remove(1.1, -1.0), -1.0050209184004553)
+
+    assert_almost_equal(pennation_angle_model.remove(1.2, 1.0), 1.0042138893472976)
+    assert_almost_equal(pennation_angle_model.remove(1.2, 0.5), 0.5021069446736488)
+    assert_almost_equal(pennation_angle_model.remove(1.2, 0.0), 0.0)
+    assert_almost_equal(pennation_angle_model.remove(1.2, -0.5), -0.5021069446736488)
+    assert_almost_equal(pennation_angle_model.remove(1.2, -1.0), -1.0042138893472976)
+
+    # Test values based on qualitative behavior (increasing exponential function)
+    assert pennation_angle_model.remove(1.0, 0.0) == 0.0
+    assert pennation_angle_model.remove(1.1, 0.5) > pennation_angle_model.remove(1.2, 0.5)
+    assert pennation_angle_model.remove(1.1, 0.5) == ComputePennationAngleMethods.Constant(pennation_angle=0.1).remove(
+        1.1, 0.5
+    )
+    assert pennation_angle_model.remove(1.2, 0.5) != ComputePennationAngleMethods.Constant(pennation_angle=0.1).remove(
         1.2, 0.5
     )
