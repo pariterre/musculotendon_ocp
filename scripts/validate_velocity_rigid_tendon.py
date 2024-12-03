@@ -30,7 +30,7 @@ def compute_muscle_fiber_velocities(
         jac = muscle_tendon_length_jacobian_func(q=q)["output"]
         vel_all_muscles = np.array(jac @ qdot)
         for m, vel_muscle in enumerate(vel_all_muscles):
-            velocities[m][i] = vel_muscle
+            velocities[m][i] = vel_muscle[0]
 
     return velocities
 

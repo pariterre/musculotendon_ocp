@@ -25,5 +25,12 @@
             "program": "${workspaceFolder}/scripts/validate_velocity_flexible_tendon.py",
             "console": "integratedTerminal",
         },
+        {
+            "name": "Plot Fvm defects against velocity",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/plot_fvm_defects_against_velocity.py",
+            "console": "integratedTerminal",
+        },
     ]
 }

@@ -52,7 +52,7 @@ def compute_muscle_fiber_velocities(
             muscle_fiber_velocity_initial_guesses=lmdot_all_muscles,
         )["output"].__array__()
         for m, vel_muscle in enumerate(lmdot_all_muscles):
-            lmdot[m][i] = vel_muscle
+            lmdot[m][i] = vel_muscle[0]
 
     return lmdot
 
@@ -250,11 +250,11 @@ if __name__ == "__main__":
         color="r",
     )
     main(
-        compute_muscle_fiber_velocity_method=ComputeMuscleFiberVelocityMethods.FlexibleTendonImplicit(),
+        compute_muscle_fiber_velocity_method=ComputeMuscleFiberVelocityMethods.FlexibleTendonImplicit(),  # TODO ForceDefect
         color="g",
     )
     main(
-        compute_muscle_fiber_velocity_method=ComputeMuscleFiberVelocityMethods.FlexibleTendonExplicit(),
+        compute_muscle_fiber_velocity_method=ComputeMuscleFiberVelocityMethods.FlexibleTendonExplicit(),  # TODO VelocityDefect
         color="b",
     )
     main(
