@@ -88,3 +88,5 @@ venv.bak/
 
 # Mac dev
 *.DS_store
+
+sandbox

@@ -10,8 +10,8 @@ def main() -> None:
     )
 
     initial_vm = muscle.normalize_muscle_fiber_velocity(np.linspace(-5, 5, 100))
-    colors = ["r", "g", "b", "k", "m"]
-    for i, delta_vm in enumerate([0.001, 0.01, 0.1]):
+    colors = ["r", "g", "b", "k", "m", "c", "y"]
+    for i, delta_vm in enumerate([-0.1, -0.01, -0.001, 0.001, 0.01, 0.1]):
         # True
         true_force_velocity = muscle.compute_force_velocity(initial_vm + delta_vm)
 
@@ -44,7 +44,10 @@ def main() -> None:
     plt.ylabel("Error of fv (%)")
     plt.grid(visible=True)
     plt.yscale("log")
-    plt.legend()
+    plt.yticks(np.logspace(-8, 1, num=10))
+    # legend out of axes but on the right
+    plt.legend(loc="center left", bbox_to_anchor=(1, 0.5))
+    plt.tight_layout()
     plt.show()
 
 
