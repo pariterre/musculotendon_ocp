@@ -69,6 +69,40 @@ def _solve_ivp_rk4(dynamics_func: Callable, t_span: tuple[float, float], y0: np.
     return y0 + (k1 + 2 * k2 + 2 * k3 + k4) / 6
 
 
+def precise_rk1(dynamics_func: Callable, y0: np.array, t_span: tuple[float, float], dt: float):
+    """
+    Compute the solution of an initial value problem for a system of ordinary differential equations using the
+    Runge-Kutta 1st order method (Euler's method). The function is called precise because it calls the solver for each
+    time step, instead of calling it once for the whole time span. The t_span and dt dictate the number of steps to be taken.
+
+    Parameters
+    ----------
+    dynamics_func: Callable
+        The function that computes the derivative of the system of ODEs
+    y0: np.array
+        The initial values of the system
+    t_span: tuple[float, float]
+        The time span of the integration
+    dt: float
+        The time step
+
+    Returns
+    -------
+    tuple[np.array, np.array]
+        The time vector (i.e. t_span[0] to t_span[1] by steps of dt) and the integrated values at each time step
+    """
+    return _perform_precise_integration(_solve_ivp_rk1, dynamics_func, y0, t_span, dt)
+
+
+def _solve_ivp_rk1(dynamics_func: Callable, t_span: tuple[float, float], y0: np.array) -> np.array:
+    t0 = t_span[0]
+    dt = t_span[1] - t_span[0]
+
+    k1 = dt * dynamics_func(t0, y0)
+
+    return y0 + k1
+
+
 def _perform_precise_integration(
     solver: Callable, dynamics_func: Callable, y0: np.array, t_span: tuple[float, float], dt: float
 ) -> tuple[np.array, np.array]:
