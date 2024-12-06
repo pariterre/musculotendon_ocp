@@ -1,6 +1,5 @@
 from matplotlib import pyplot as plt
 from musculotendon_ocp import MuscleHillModels
-from musculotendon_ocp.math import compute_finitediff, precise_rk45, precise_rk4
 import numpy as np
 
 

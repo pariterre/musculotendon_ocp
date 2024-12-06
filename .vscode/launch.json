@@ -32,5 +32,12 @@
             "program": "${workspaceFolder}/scripts/plot_fvm_defects_against_velocity.py",
             "console": "integratedTerminal",
         },
+        {
+            "name": "Plot Force defects against velocity",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/plot_force_defects_against_velocity.py",
+            "console": "integratedTerminal",
+        },
     ]
 }
