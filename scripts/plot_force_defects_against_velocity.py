@@ -52,6 +52,16 @@ def main() -> None:
                 compute_force_damping=ComputeForceDampingMethods.Linear(factor=0.1),
                 maximal_velocity=5.0,
                 compute_muscle_fiber_length=ComputeMuscleFiberLengthMethods.AsVariable(),
+                compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityMethods.FlexibleTendonFromForceDefects(),
+            ),
+            MuscleHillModels.FlexibleTendon(
+                name="Mus1",
+                maximal_force=1000,
+                optimal_length=0.1,
+                tendon_slack_length=0.16,
+                compute_force_damping=ComputeForceDampingMethods.Linear(factor=0.1),
+                maximal_velocity=5.0,
+                compute_muscle_fiber_length=ComputeMuscleFiberLengthMethods.AsVariable(),
                 compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityMethods.FlexibleTendonFromVelocityDefects(),
             ),
             MuscleHillModels.FlexibleTendon(
@@ -115,7 +125,7 @@ def main() -> None:
 
         # Integrate the muscle fiber length
         t, muscles_fiber_length = method(
-            muscles_fiber_length_dynamics_fn, y0=initial_muscles_fiber_length, t_span=[0, 1], dt=0.001
+            muscles_fiber_length_dynamics_fn, y0=initial_muscles_fiber_length, t_span=[0, 0.05], dt=0.001
         )
 
         # Dispatch the results and compute the resulting muscle forces
@@ -154,7 +164,7 @@ def main() -> None:
         plt.plot(result["t"], result["muscles_fiber_length"], label=key, color=result["color"])
     plt.title("Muscles fiber length")
     plt.xlabel("Time (s)")
-    plt.ylabel("Muscles fiber length")
+    plt.ylabel("Muscles fiber length (m)")
     plt.grid(visible=True)
     plt.legend()
 
@@ -163,7 +173,7 @@ def main() -> None:
         plt.plot(result["t"], result["muscles_fiber_velocity"], label=key, color=result["color"])
     plt.title("Muscle fiber velocity")
     plt.xlabel("Time (s)")
-    plt.ylabel("Muscle fiber velocity")
+    plt.ylabel("Muscle fiber velocity (m/s)")
     plt.grid(visible=True)
     plt.legend()
 
@@ -172,7 +182,7 @@ def main() -> None:
         plt.plot(result["t"], result["muscles_force"], label=key, color=result["color"])
     plt.title("Muscle force")
     plt.xlabel("Time (s)")
-    plt.ylabel("Muscle force")
+    plt.ylabel("Muscle force (N)")
     plt.grid(visible=True)
     plt.legend()
 
