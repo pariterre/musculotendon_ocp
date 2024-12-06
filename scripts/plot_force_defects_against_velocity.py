@@ -36,6 +36,14 @@ def main() -> None:
     model = RigidbodyModels.WithMuscles(
         "musculotendon_ocp/rigidbody_models/models/one_muscle_holding_a_cube.bioMod",
         muscles=[
+            MuscleHillModels.RigidTendon(
+                name="Mus1",
+                maximal_force=1000,
+                optimal_length=0.1,
+                tendon_slack_length=0.16,
+                compute_force_damping=ComputeForceDampingMethods.Linear(factor=0.1),
+                maximal_velocity=5.0,
+            ),
             MuscleHillModels.FlexibleTendon(
                 name="Mus1",
                 maximal_force=1000,
@@ -70,8 +78,8 @@ def main() -> None:
     )
     muscle_count = len(model.muscles)
 
-    activations = np.array([0.1] * muscle_count)
-    q = np.array([0.25])
+    activations = np.array([0.5] * muscle_count)
+    q = np.array([0.290])
     qdot = np.array([0.0])
     initial_muscles_fiber_length = np.array([0.1] * muscle_count)
     initial_muscles_fiber_velocity = np.array([-1.7] * muscle_count)
