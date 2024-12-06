@@ -24,11 +24,17 @@ def test_compute_muscle_fiber_velocity_methods():
     rigid_tendon = ComputeMuscleFiberVelocityMethods.RigidTendon()
     assert type(rigid_tendon) == ComputeMuscleFiberVelocityMethods.RigidTendon.value
 
-    flexible_tendon_implicit = ComputeMuscleFiberVelocityMethods.FlexibleTendonImplicit()
-    assert type(flexible_tendon_implicit) == ComputeMuscleFiberVelocityMethods.FlexibleTendonImplicit.value
+    flexible_tendon_from_force_defects = ComputeMuscleFiberVelocityMethods.FlexibleTendonFromForceDefects()
+    assert (
+        type(flexible_tendon_from_force_defects)
+        == ComputeMuscleFiberVelocityMethods.FlexibleTendonFromForceDefects.value
+    )
 
-    flexible_tendon_explicit = ComputeMuscleFiberVelocityMethods.FlexibleTendonExplicit()
-    assert type(flexible_tendon_explicit) == ComputeMuscleFiberVelocityMethods.FlexibleTendonExplicit.value
+    flexible_tendon_from_velocity_defects = ComputeMuscleFiberVelocityMethods.FlexibleTendonFromVelocityDefects()
+    assert (
+        type(flexible_tendon_from_velocity_defects)
+        == ComputeMuscleFiberVelocityMethods.FlexibleTendonFromVelocityDefects.value
+    )
 
     flexible_tendon_linearized = ComputeMuscleFiberVelocityMethods.FlexibleTendonLinearized()
     assert type(flexible_tendon_linearized) == ComputeMuscleFiberVelocityMethods.FlexibleTendonLinearized.value
@@ -66,13 +72,13 @@ def test_compute_muscle_fiber_velocity_rigid_tendon():
     np.testing.assert_almost_equal(muscle_fiber_velocity, -0.5)
 
 
-def test_compute_muscle_fiber_velocity_flexible_tendon_implicit():
+def test_compute_muscle_fiber_velocity_flexible_tendon_from_force_defects():
     mus = MuscleHillModels.FlexibleTendonAlwaysPositive(
         name="Mus1", maximal_force=500, optimal_length=0.1, tendon_slack_length=0.123, maximal_velocity=5.0
     )
     model = RigidbodyModels.WithMuscles(model_path, muscles=[mus])
 
-    compute_muscle_fiber_velocity = ComputeMuscleFiberVelocityMethods.FlexibleTendonImplicit()
+    compute_muscle_fiber_velocity = ComputeMuscleFiberVelocityMethods.FlexibleTendonFromForceDefects()
 
     activation = np.array([0.5])
     q = np.ones(model.nb_q) * -0.2
@@ -93,14 +99,16 @@ def test_compute_muscle_fiber_velocity_flexible_tendon_implicit():
     np.testing.assert_almost_equal(muscle_fiber_velocity, -5.201202604749881)
 
 
-def test_compute_muscle_fiber_velocity_flexible_tendon_implicit_wrong_constructor():
+def test_compute_muscle_fiber_velocity_flexible_tendon_from_force_defects_wrong_constructor():
     mus = MuscleHillModels.RigidTendon(
         name="Mus1", maximal_force=500, optimal_length=0.1, tendon_slack_length=0.123, maximal_velocity=5.0
     )
     model = RigidbodyModels.WithMuscles(model_path, muscles=[mus])
 
     mx_symbolic = MX.sym("muscle_fiber_length", 1, 1)
-    compute_muscle_fiber_velocity = ComputeMuscleFiberVelocityMethods.FlexibleTendonImplicit(mx_symbolic=mx_symbolic)
+    compute_muscle_fiber_velocity = ComputeMuscleFiberVelocityMethods.FlexibleTendonFromForceDefects(
+        mx_symbolic=mx_symbolic
+    )
 
     activation = np.array([0.5])
     q = np.ones(model.nb_q) * -0.2
@@ -121,13 +129,13 @@ def test_compute_muscle_fiber_velocity_flexible_tendon_implicit_wrong_constructo
         )
 
 
-def test_compute_muscle_fiber_velocity_flexible_tendon_explicit():
+def test_compute_muscle_fiber_velocity_flexible_tendon_from_velocity_defects():
     mus = MuscleHillModels.FlexibleTendonAlwaysPositive(
         name="Mus1", maximal_force=500, optimal_length=0.1, tendon_slack_length=0.123, maximal_velocity=5.0
     )
     model = RigidbodyModels.WithMuscles(model_path, muscles=[mus])
 
-    compute_muscle_fiber_velocity = ComputeMuscleFiberVelocityMethods.FlexibleTendonExplicit()
+    compute_muscle_fiber_velocity = ComputeMuscleFiberVelocityMethods.FlexibleTendonFromVelocityDefects()
 
     activation = np.array([0.5])
     q = np.ones(model.nb_q) * -0.2
@@ -150,14 +158,16 @@ def test_compute_muscle_fiber_velocity_flexible_tendon_explicit():
     np.testing.assert_almost_equal(muscle_fiber_velocity, -5.201202604749881)
 
 
-def test_compute_muscle_fiber_velocity_flexible_tendon_explicit_wrong_constructor():
+def test_compute_muscle_fiber_velocity_flexible_tendon_from_velocity_defects_wrong_constructor():
     mus = MuscleHillModels.RigidTendon(
         name="Mus1", maximal_force=500, optimal_length=0.1, tendon_slack_length=0.123, maximal_velocity=5.0
     )
     model = RigidbodyModels.WithMuscles(model_path, muscles=[mus])
 
     mx_symbolic = MX.sym("muscle_fiber_length", 1, 1)
-    compute_muscle_fiber_velocity = ComputeMuscleFiberVelocityMethods.FlexibleTendonExplicit(mx_symbolic=mx_symbolic)
+    compute_muscle_fiber_velocity = ComputeMuscleFiberVelocityMethods.FlexibleTendonFromVelocityDefects(
+        mx_symbolic=mx_symbolic
+    )
 
     activation = np.array([0.5])
     q = np.ones(model.nb_q) * -0.2

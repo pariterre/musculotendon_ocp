@@ -32,7 +32,7 @@ class RigidbodyModelWithMuscles(BiorbdModel):
 
         self.muscles = muscles
 
-    def copy_with_with_all_flexible_tendons(self) -> Self:
+    def copy_with_all_flexible_tendons(self) -> Self:
         # TODO Test this
         new_muscles = []
         for muscle in self.muscles:
@@ -51,7 +51,7 @@ class RigidbodyModelWithMuscles(BiorbdModel):
                     compute_muscle_fiber_length=ComputeMuscleFiberLengthMethods.AsVariable(
                         mx_symbolic=muscle.compute_muscle_fiber_length.mx_variable
                     ),
-                    compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityMethods.FlexibleTendonExplicit(
+                    compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityMethods.FlexibleTendonFromVelocityDefects(
                         mx_symbolic=muscle.compute_muscle_fiber_velocity.mx_variable
                     ),
                 )

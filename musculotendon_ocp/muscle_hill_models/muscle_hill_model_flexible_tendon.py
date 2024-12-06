@@ -9,7 +9,7 @@ from .compute_muscle_fiber_length import (
 )
 from .compute_muscle_fiber_velocity import (
     ComputeMuscleFiberVelocityRigidTendon,
-    ComputeMuscleFiberVelocityFlexibleTendonImplicit,
+    ComputeMuscleFiberVelocityFlexibleTendonFromForceDefects,
 )
 from .muscle_hill_model_rigid_tendon import MuscleHillModelRigidTendon
 from .muscle_hill_model_abstract import ComputeMuscleFiberLength, ComputeMuscleFiberVelocity
@@ -39,7 +39,7 @@ class MuscleHillModelFlexibleTendon(MuscleHillModelRigidTendon):
             raise ValueError("The compute_muscle_fiber_length must be a flexible tendon")
 
         if compute_muscle_fiber_velocity is None:
-            compute_muscle_fiber_velocity = ComputeMuscleFiberVelocityFlexibleTendonImplicit()
+            compute_muscle_fiber_velocity = ComputeMuscleFiberVelocityFlexibleTendonFromForceDefects()
         if isinstance(compute_muscle_fiber_velocity, ComputeMuscleFiberVelocityRigidTendon):
             raise ValueError("The compute_muscle_fiber_velocity must be a flexible tendon")
 

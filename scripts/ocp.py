@@ -178,9 +178,9 @@ def prepare_ocp(
     PlotHelpers.add_tendon_forces_plot_to_ocp(ocp=ocp, model=model)
     PlotHelpers.add_muscle_forces_plot_to_ocp(ocp=ocp, model=model)
 
-    model_flexible_explicit = model.copy_with_with_all_flexible_tendons()
-    PlotHelpers.add_tendon_forces_plot_to_ocp(ocp=ocp, model=model_flexible_explicit)
-    PlotHelpers.add_muscle_forces_plot_to_ocp(ocp=ocp, model=model_flexible_explicit)
+    model_flexible_from_velocity_defects = model.copy_with_all_flexible_tendons()
+    PlotHelpers.add_tendon_forces_plot_to_ocp(ocp=ocp, model=model_flexible_from_velocity_defects)
+    PlotHelpers.add_muscle_forces_plot_to_ocp(ocp=ocp, model=model_flexible_from_velocity_defects)
 
     return ocp
 

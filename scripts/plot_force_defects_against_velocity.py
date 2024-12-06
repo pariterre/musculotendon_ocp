@@ -44,7 +44,7 @@ def main() -> None:
                 compute_force_damping=ComputeForceDampingMethods.Linear(factor=0.1),
                 maximal_velocity=5.0,
                 compute_muscle_fiber_length=ComputeMuscleFiberLengthMethods.AsVariable(),
-                compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityMethods.FlexibleTendonExplicit(),
+                compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityMethods.FlexibleTendonFromVelocityDefects(),
             ),
             MuscleHillModels.FlexibleTendon(
                 name="Mus1",

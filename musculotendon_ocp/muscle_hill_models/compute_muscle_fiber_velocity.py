@@ -66,14 +66,14 @@ class ComputeMuscleFiberVelocityRigidTendon(ComputeMuscleFiberVelocityAsVariable
         return mus_jacobian @ qdot
 
 
-class ComputeMuscleFiberVelocityFlexibleTendonImplicit(ComputeMuscleFiberVelocityAsVariable):
+class ComputeMuscleFiberVelocityFlexibleTendonFromForceDefects(ComputeMuscleFiberVelocityAsVariable):
     """
     Compute the muscle fiber velocity by inverting the force-velocity relationship.
     """
 
     def __init__(self, mx_symbolic: MX = None) -> None:
         """
-        Initialize the ComputeMuscleFiberVelocityFlexibleTendonImplicit class.
+        Initialize the ComputeMuscleFiberVelocityFlexibleTendonFromForceDefects class.
 
         Parameters
         ----------
@@ -139,7 +139,7 @@ class ComputeMuscleFiberVelocityFlexibleTendonImplicit(ComputeMuscleFiberVelocit
         return newton_method(i0=muscle_fiber_velocity_initial_guess, i1=muscle_fiber_length, i2=activation, i3=q)["o0"]
 
 
-class ComputeMuscleFiberVelocityFlexibleTendonExplicit(ComputeMuscleFiberVelocityAsVariable):
+class ComputeMuscleFiberVelocityFlexibleTendonFromVelocityDefects(ComputeMuscleFiberVelocityAsVariable):
     """
     Compute the muscle fiber velocity by inverting the force-velocity relationship.
     """
@@ -350,8 +350,8 @@ class ComputeMuscleFiberVelocityFlexibleTendonQuadratic(ComputeMuscleFiberVeloci
 
 class ComputeMuscleFiberVelocityMethods(Enum):
     RigidTendon = ComputeMuscleFiberVelocityRigidTendon
-    FlexibleTendonImplicit = ComputeMuscleFiberVelocityFlexibleTendonImplicit
-    FlexibleTendonExplicit = ComputeMuscleFiberVelocityFlexibleTendonExplicit
+    FlexibleTendonFromForceDefects = ComputeMuscleFiberVelocityFlexibleTendonFromForceDefects
+    FlexibleTendonFromVelocityDefects = ComputeMuscleFiberVelocityFlexibleTendonFromVelocityDefects
     FlexibleTendonLinearized = ComputeMuscleFiberVelocityFlexibleTendonLinearized
     FlexibleTendonQuadratic = ComputeMuscleFiberVelocityFlexibleTendonQuadratic
 

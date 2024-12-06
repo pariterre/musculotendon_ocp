@@ -34,7 +34,7 @@ def test_muscle_biorbd_model_wrong_constructor():
         )
 
 
-def test_copy_with_with_all_flexible_tendons():
+def test_copy_with_all_flexible_tendons():
     model = RigidbodyModels.WithMuscles(
         model_path,
         muscles=[
@@ -47,7 +47,7 @@ def test_copy_with_with_all_flexible_tendons():
                 optimal_length=0.1,
                 tendon_slack_length=0.123,
                 maximal_velocity=5.0,
-                compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityMethods.FlexibleTendonExplicit(),
+                compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityMethods.FlexibleTendonFromVelocityDefects(),
             ),
             MuscleHillModels.FlexibleTendon(
                 name="Mus1",
@@ -55,7 +55,7 @@ def test_copy_with_with_all_flexible_tendons():
                 optimal_length=0.1,
                 tendon_slack_length=0.123,
                 maximal_velocity=5.0,
-                compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityMethods.FlexibleTendonImplicit(),
+                compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityMethods.FlexibleTendonFromForceDefects(),
             ),
             MuscleHillModels.FlexibleTendon(
                 name="Mus1",
@@ -76,15 +76,16 @@ def test_copy_with_with_all_flexible_tendons():
         ],
     )
 
-    copied_model = model.copy_with_with_all_flexible_tendons()
+    copied_model = model.copy_with_all_flexible_tendons()
     assert copied_model.path == model.path
     assert copied_model.nb_muscles == 5
 
-    # Test all the muscles are of type flexible with explicit computation of the fiber velocity
+    # Test all the muscles are of type flexible with computation of the fiber velocity using velocity defects
     for muscles in copied_model.muscles:
         assert isinstance(muscles, MuscleHillModels.FlexibleTendon.value)
         assert isinstance(
-            muscles.compute_muscle_fiber_velocity, ComputeMuscleFiberVelocityMethods.FlexibleTendonExplicit.value
+            muscles.compute_muscle_fiber_velocity,
+            ComputeMuscleFiberVelocityMethods.FlexibleTendonFromVelocityDefects.value,
         )
 
     # Test that it did not modify the original model
@@ -97,11 +98,13 @@ def test_copy_with_with_all_flexible_tendons():
 
         if i == 1:
             assert isinstance(
-                muscles.compute_muscle_fiber_velocity, ComputeMuscleFiberVelocityMethods.FlexibleTendonExplicit.value
+                muscles.compute_muscle_fiber_velocity,
+                ComputeMuscleFiberVelocityMethods.FlexibleTendonFromVelocityDefects.value,
             )
         else:
             assert not isinstance(
-                muscles.compute_muscle_fiber_velocity, ComputeMuscleFiberVelocityMethods.FlexibleTendonExplicit.value
+                muscles.compute_muscle_fiber_velocity,
+                ComputeMuscleFiberVelocityMethods.FlexibleTendonFromVelocityDefects.value,
             )
 
     # Test that all the mx_variables are shared
@@ -181,7 +184,7 @@ def test_muscle_biorbd_model_get_mx_variables():
                 compute_muscle_fiber_length=ComputeMuscleFiberLengthMethods.AsVariable(
                     mx_symbolic=muscle_fiber_length_mx
                 ),
-                compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityMethods.FlexibleTendonImplicit(
+                compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityMethods.FlexibleTendonFromForceDefects(
                     mx_symbolic=muscle_fiber_velocity_mx
                 ),
                 **dummy_params

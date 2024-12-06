@@ -250,15 +250,15 @@ if __name__ == "__main__":
         color="r",
     )
     main(
-        compute_muscle_fiber_velocity_method=ComputeMuscleFiberVelocityMethods.FlexibleTendonImplicit(),  # TODO ForceDefect
+        compute_muscle_fiber_velocity_method=ComputeMuscleFiberVelocityMethods.FlexibleTendonFromForceDefects(),  # TODO ForceDefect
         color="g",
     )
     main(
-        compute_muscle_fiber_velocity_method=ComputeMuscleFiberVelocityMethods.FlexibleTendonExplicit(),  # TODO VelocityDefect
+        compute_muscle_fiber_velocity_method=ComputeMuscleFiberVelocityMethods.FlexibleTendonFromVelocityDefects(),  # TODO VelocityDefect
         color="b",
     )
     main(
-        compute_muscle_fiber_velocity_method=ComputeMuscleFiberVelocityMethods.FlexibleTendonExplicit(),
+        compute_muscle_fiber_velocity_method=ComputeMuscleFiberVelocityMethods.FlexibleTendonFromVelocityDefects(),
         color="#00A5FF",
         integration_method=precise_rk4,
     )
@@ -271,8 +271,8 @@ if __name__ == "__main__":
     print(f"Timing the script, each method will be repeated {repeat} times. This may take a while")
     timings = time_main(
         [
-            "ComputeMuscleFiberVelocityMethods.FlexibleTendonImplicit()",
-            "ComputeMuscleFiberVelocityMethods.FlexibleTendonExplicit()",
+            "ComputeMuscleFiberVelocityMethods.FlexibleTendonFromForceDefects()",
+            "ComputeMuscleFiberVelocityMethods.FlexibleTendonFromVelocityDefects()",
             "ComputeMuscleFiberVelocityMethods.FlexibleTendonLinearized()",
             "ComputeMuscleFiberVelocityMethods.FlexibleTendonQuadratic()",
         ],
