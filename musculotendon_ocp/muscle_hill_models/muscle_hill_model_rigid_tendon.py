@@ -29,6 +29,7 @@ class MuscleHillModelRigidTendon(MuscleHillModelAbstract):
         optimal_length: MX,
         tendon_slack_length: MX,
         maximal_velocity: MX,
+        label: str = None,
         compute_force_passive: ComputeForcePassive | None = None,
         compute_force_active: ComputeForceActive | None = None,
         compute_force_velocity: ComputeForceVelocity | None = None,
@@ -63,6 +64,7 @@ class MuscleHillModelRigidTendon(MuscleHillModelAbstract):
 
         super().__init__(
             name=name,
+            label=label,
             maximal_force=maximal_force,
             optimal_length=optimal_length,
             tendon_slack_length=tendon_slack_length,

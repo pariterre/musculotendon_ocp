@@ -39,5 +39,12 @@
             "program": "${workspaceFolder}/scripts/plot_force_defects_against_velocity.py",
             "console": "integratedTerminal",
         },
+        {
+            "name": "Plot dVm against dT",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/plot_dvm_against_dt.py",
+            "console": "integratedTerminal",
+        },
     ]
 }

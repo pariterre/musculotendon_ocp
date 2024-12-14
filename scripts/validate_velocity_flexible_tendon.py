@@ -250,11 +250,11 @@ if __name__ == "__main__":
         color="r",
     )
     main(
-        compute_muscle_fiber_velocity_method=ComputeMuscleFiberVelocityMethods.FlexibleTendonFromForceDefects(),  # TODO ForceDefect
+        compute_muscle_fiber_velocity_method=ComputeMuscleFiberVelocityMethods.FlexibleTendonFromForceDefects(),
         color="g",
     )
     main(
-        compute_muscle_fiber_velocity_method=ComputeMuscleFiberVelocityMethods.FlexibleTendonFromVelocityDefects(),  # TODO VelocityDefect
+        compute_muscle_fiber_velocity_method=ComputeMuscleFiberVelocityMethods.FlexibleTendonFromVelocityDefects(),
         color="b",
     )
     main(

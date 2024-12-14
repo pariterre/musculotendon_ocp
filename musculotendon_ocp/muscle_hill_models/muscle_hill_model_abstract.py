@@ -269,6 +269,7 @@ class MuscleHillModelAbstract(ABC):
     def __init__(
         self,
         name: str,
+        label: str | None,
         maximal_force: MX,
         optimal_length: MX,
         tendon_slack_length: MX,
@@ -286,6 +287,8 @@ class MuscleHillModelAbstract(ABC):
         ----------
         name: str
             The muscle name
+        label: str | None
+            The muscle label to identify. If None, the name is used.
         maximal_force: MX
             The maximal force the muscle can produce
         optimal_length: MX
@@ -306,6 +309,7 @@ class MuscleHillModelAbstract(ABC):
             The damping function
         """
         self._name = name
+        self._label = label if label is not None else name
 
         if maximal_force < 0:
             raise ValueError("The maximal force must be positive")
@@ -338,6 +342,13 @@ class MuscleHillModelAbstract(ABC):
         Get the muscle name
         """
         return self._name
+
+    @property
+    def label(self) -> str:
+        """
+        Get the muscle label
+        """
+        return self._label
 
     @cached_property
     def activation_mx(self) -> MX:

@@ -4,7 +4,11 @@ from scipy.integrate import solve_ivp as _solve_ivp_rk45
 
 
 def precise_rk45(
-    dynamics_func: Callable, y0: np.array, t_span: tuple[float, float], dt: float
+    dynamics_func: Callable,
+    y0: np.array,
+    t_span: tuple[float, float],
+    dt: float,
+    inter_step_callback: Callable | None = None,
 ) -> tuple[np.array, np.array]:
     """
     Compute the solution of an initial value problem for a system of ordinary differential equations using the
@@ -23,16 +27,25 @@ def precise_rk45(
         The time span of the integration
     dt: float
         The time step
+    inter_step_callback: Callable | None
+        The function to call after each integration step. It should take the current time and the current values as
+        arguments
 
     Returns
     -------
     tuple[np.array, np.array]
         The time vector (i.e. t_span[0] to t_span[1] by steps of dt) and the integrated values at each time step
     """
-    return _perform_precise_integration(_solve_ivp_rk45, dynamics_func, y0, t_span, dt)
+    return _perform_precise_integration(_solve_ivp_rk45, dynamics_func, y0, t_span, dt, inter_step_callback)
 
 
-def precise_rk4(dynamics_func: Callable, y0: np.array, t_span: tuple[float, float], dt: float):
+def precise_rk4(
+    dynamics_func: Callable,
+    y0: np.array,
+    t_span: tuple[float, float],
+    dt: float,
+    inter_step_callback: Callable | None = None,
+):
     """
     Compute the solution of an initial value problem for a system of ordinary differential equations using the
     Runge-Kutta 4th order method. The function is called precise because it calls the solver for each time step, instead
@@ -48,13 +61,16 @@ def precise_rk4(dynamics_func: Callable, y0: np.array, t_span: tuple[float, floa
         The time span of the integration
     dt: float
         The time step
+    inter_step_callback: Callable | None
+        The function to call after each integration step. It should take the current time and the current values as
+        arguments
 
     Returns
     -------
     tuple[np.array, np.array]
         The time vector (i.e. t_span[0] to t_span[1] by steps of dt) and the integrated values at each time step
     """
-    return _perform_precise_integration(_solve_ivp_rk4, dynamics_func, y0, t_span, dt)
+    return _perform_precise_integration(_solve_ivp_rk4, dynamics_func, y0, t_span, dt, inter_step_callback)
 
 
 def _solve_ivp_rk4(dynamics_func: Callable, t_span: tuple[float, float], y0: np.array) -> np.array:
@@ -69,7 +85,13 @@ def _solve_ivp_rk4(dynamics_func: Callable, t_span: tuple[float, float], y0: np.
     return y0 + (k1 + 2 * k2 + 2 * k3 + k4) / 6
 
 
-def precise_rk1(dynamics_func: Callable, y0: np.array, t_span: tuple[float, float], dt: float):
+def precise_rk1(
+    dynamics_func: Callable,
+    y0: np.array,
+    t_span: tuple[float, float],
+    dt: float,
+    inter_step_callback: Callable | None = None,
+) -> tuple[np.array, np.array]:
     """
     Compute the solution of an initial value problem for a system of ordinary differential equations using the
     Runge-Kutta 1st order method (Euler's method). The function is called precise because it calls the solver for each
@@ -85,6 +107,9 @@ def precise_rk1(dynamics_func: Callable, y0: np.array, t_span: tuple[float, floa
         The time span of the integration
     dt: float
         The time step
+    inter_step_callback: Callable | None
+        The function to call after each integration step. It should take the current time and the current values as
+        arguments
 
     Returns
     -------
@@ -104,7 +129,12 @@ def _solve_ivp_rk1(dynamics_func: Callable, t_span: tuple[float, float], y0: np.
 
 
 def _perform_precise_integration(
-    solver: Callable, dynamics_func: Callable, y0: np.array, t_span: tuple[float, float], dt: float
+    solver: Callable,
+    dynamics_func: Callable,
+    y0: np.array,
+    t_span: tuple[float, float],
+    dt: float,
+    inter_step_callback: Callable | None = None,
 ) -> tuple[np.array, np.array]:
     """
     Perform the integration using the specified solver.
@@ -121,6 +151,9 @@ def _perform_precise_integration(
         The time span of the integration
     dt: float
         The time step
+    inter_step_callback: Callable | None
+        The function to call after each integration step. It should take the current time and the current values as
+        arguments
 
     Returns
     -------
@@ -142,5 +175,8 @@ def _perform_precise_integration(
 
         y0 = out
         values[:, i + 1] = y0
+
+        if inter_step_callback is not None:
+            inter_step_callback(time_vector[i + 1], values[:, i + 1])
 
     return time_vector, values
