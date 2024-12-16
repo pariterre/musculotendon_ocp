@@ -52,17 +52,19 @@ initial_velocity_guesses = []
 
 def main() -> None:
     colors = ["b", "g", "y", "m", "c"]
+    reference_name = "Force defects"
     model = RigidbodyModels.WithMuscles(
         "musculotendon_ocp/rigidbody_models/models/one_muscle_holding_a_cube.bioMod",
         muscles=[
-            # MuscleHillModels.RigidTendon(
-            #     name="Mus1",
-            #     maximal_force=1000,
-            #     optimal_length=0.1,
-            #     tendon_slack_length=0.16,
-            #     compute_force_damping=ComputeForceDampingMethods.Linear(factor=0.1),
-            #     maximal_velocity=5.0,
-            # ),
+            MuscleHillModels.RigidTendon(
+                name="Mus1",
+                label="Rigid",
+                maximal_force=1000,
+                optimal_length=0.1,
+                tendon_slack_length=0.16,
+                compute_force_damping=ComputeForceDampingMethods.Linear(factor=0.1),
+                maximal_velocity=5.0,
+            ),
             MuscleHillModels.FlexibleTendon(
                 name="Mus1",
                 label="Force defects",
@@ -74,16 +76,17 @@ def main() -> None:
                 compute_muscle_fiber_length=ComputeMuscleFiberLengthMethods.AsVariable(),
                 compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityMethods.FlexibleTendonFromForceDefects(),
             ),
-            # MuscleHillModels.FlexibleTendon(
-            #     name="Mus1",
-            #     maximal_force=1000,
-            #     optimal_length=0.1,
-            #     tendon_slack_length=0.16,
-            #     compute_force_damping=ComputeForceDampingMethods.Linear(factor=0.1),
-            #     maximal_velocity=5.0,
-            #     compute_muscle_fiber_length=ComputeMuscleFiberLengthMethods.AsVariable(),
-            #     compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityMethods.FlexibleTendonFromVelocityDefects(),
-            # ),
+            MuscleHillModels.FlexibleTendon(
+                name="Mus1",
+                label="Velocity defects",
+                maximal_force=1000,
+                optimal_length=0.1,
+                tendon_slack_length=0.16,
+                compute_force_damping=ComputeForceDampingMethods.Linear(factor=0.1),
+                maximal_velocity=5.0,
+                compute_muscle_fiber_length=ComputeMuscleFiberLengthMethods.AsVariable(),
+                compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityMethods.FlexibleTendonFromVelocityDefects(),
+            ),
             MuscleHillModels.FlexibleTendon(
                 name="Mus1",
                 label="Linearized",
@@ -95,19 +98,21 @@ def main() -> None:
                 compute_muscle_fiber_length=ComputeMuscleFiberLengthMethods.AsVariable(),
                 compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityMethods.FlexibleTendonLinearized(),
             ),
-            # MuscleHillModels.FlexibleTendon(
-            #     name="Mus1",
-            #     maximal_force=1000,
-            #     optimal_length=0.1,
-            #     tendon_slack_length=0.16,
-            #     compute_force_damping=ComputeForceDampingMethods.Linear(factor=0.1),
-            #     maximal_velocity=5.0,
-            #     compute_muscle_fiber_length=ComputeMuscleFiberLengthMethods.AsVariable(),
-            #     compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityMethods.FlexibleTendonQuadratic(),
-            # ),
+            MuscleHillModels.FlexibleTendon(
+                name="Mus1",
+                label="Quadratic",
+                maximal_force=1000,
+                optimal_length=0.1,
+                tendon_slack_length=0.16,
+                compute_force_damping=ComputeForceDampingMethods.Linear(factor=0.1),
+                maximal_velocity=5.0,
+                compute_muscle_fiber_length=ComputeMuscleFiberLengthMethods.AsVariable(),
+                compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityMethods.FlexibleTendonQuadratic(),
+            ),
         ],
     )
     muscle_count = len(model.muscles)
+    reference_index = [m.label for m in model.muscles].index(reference_name)
 
     activations = np.array([0.0] * muscle_count)
     q = np.array([0.290])
@@ -195,16 +200,26 @@ def main() -> None:
     plt.legend()
 
     # Plot muscle forces
-    # TODO Generalize this
     plt.figure()
-    diff_force = muscles_force[:, 1] - muscles_force[:, 0]
-    impulse = np.zeros_like(diff_force)
-    for i in range(1, len(diff_force)):
-        impulse[i] = (diff_force[i] - diff_force[i - 1]) * (t[i] - t[i - 1])
-    plt.plot(t, impulse, label=model.muscles[m].label, color=colors[m], marker="o")
+    for m in range(len(model.muscles)):
+        plt.plot(t, muscles_force[:, m], label=model.muscles[m].label, color=colors[m], marker="o")
     plt.title("Impulse")
     plt.xlabel("Time (s)")
     plt.ylabel("Impulse (N * s)")
+    plt.grid(visible=True)
+    plt.legend()
+
+    # Plot muscle forces
+    plt.figure()
+    for m in range(len(model.muscles)):
+        diff_force = muscles_force[:, m] - muscles_force[:, reference_index]
+        impulse = np.zeros_like(diff_force)
+        # TODO Cumsum instead of by time
+        impulse[1:-1] = (diff_force[2:] + diff_force[:-2]) / 2 * (t[2:] - t[:-2])
+        plt.plot(t, impulse, label=model.muscles[m].label, color=colors[m], marker="o")
+    plt.title("Difference of impulse")
+    plt.xlabel("Time (s)")
+    plt.ylabel("Difference of impulse (N * s)")
     plt.grid(visible=True)
     plt.legend()
 
