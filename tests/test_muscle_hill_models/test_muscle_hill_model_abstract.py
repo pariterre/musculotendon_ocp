@@ -1,4 +1,4 @@
-from typing import override
+from typing import override, Self
 
 from casadi import MX
 from musculotendon_ocp.muscle_hill_models.muscle_hill_model_abstract import MuscleHillModelAbstract
@@ -7,6 +7,11 @@ import pytest
 
 
 class DummyMuscleModelAbstract(MuscleHillModelAbstract):
+    @override
+    @property
+    def copy(self) -> Self:
+        pass
+
     @override
     def normalize_muscle_fiber_length(self, muscle_fiber_length: MX) -> MX:
         pass
@@ -47,6 +52,7 @@ def test_muscle_hill_model_rigid_tendon_checking_inputs():
     with pytest.raises(ValueError, match="The maximal force must be positive"):
         DummyMuscleModelAbstract(
             name="Dummy",
+            label="Dummy",
             maximal_force=-123,
             optimal_length=0.123,
             tendon_slack_length=0.123,
@@ -63,6 +69,7 @@ def test_muscle_hill_model_rigid_tendon_checking_inputs():
     with pytest.raises(ValueError, match="The optimal length must be positive"):
         DummyMuscleModelAbstract(
             name="Dummy",
+            label="Dummy",
             maximal_force=123,
             optimal_length=-0.123,
             tendon_slack_length=0.123,
@@ -79,6 +86,7 @@ def test_muscle_hill_model_rigid_tendon_checking_inputs():
     with pytest.raises(ValueError, match="The tendon slack length must be positive"):
         DummyMuscleModelAbstract(
             name="Dummy",
+            label="Dummy",
             maximal_force=123,
             optimal_length=0.123,
             tendon_slack_length=-0.123,
@@ -95,6 +103,7 @@ def test_muscle_hill_model_rigid_tendon_checking_inputs():
     with pytest.raises(ValueError, match="The maximal velocity must be positive"):
         DummyMuscleModelAbstract(
             name="Dummy",
+            label="Dummy",
             maximal_force=123,
             optimal_length=0.123,
             tendon_slack_length=0.123,
@@ -112,6 +121,7 @@ def test_muscle_hill_model_rigid_tendon_checking_inputs():
 def test_get_mx_variables():
     model = DummyMuscleModelAbstract(
         name="Dummy",
+        label="Dummy",
         maximal_force=123,
         optimal_length=0.123,
         tendon_slack_length=0.123,
@@ -142,6 +152,7 @@ def test_get_mx_variables():
 def test_muscle_model_abstract_casadi_function_interface():
     model = DummyMuscleModelAbstract(
         name="Dummy",
+        label="Dummy",
         maximal_force=123,
         optimal_length=0.123,
         tendon_slack_length=0.123,

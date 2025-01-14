@@ -1,5 +1,6 @@
 from enum import Enum
 from functools import cached_property
+from typing import Self
 
 import biorbd_casadi as biorbd
 from casadi import MX, Function, rootfinder, symvar, cos, sqrt
@@ -21,6 +22,10 @@ class ComputeMuscleFiberVelocityAsVariable:
 
     def __init__(self, mx_symbolic: MX = None) -> None:
         self._mx_variable = MX.sym("muscle_fiber_velocity", 1, 1) if mx_symbolic is None else mx_symbolic
+
+    @property
+    def copy(self) -> Self:
+        return ComputeMuscleFiberVelocityAsVariable(mx_symbolic=self.mx_variable)
 
     @cached_property
     def mx_variable(self) -> MX:
@@ -65,22 +70,15 @@ class ComputeMuscleFiberVelocityRigidTendon(ComputeMuscleFiberVelocityAsVariable
 
         return mus_jacobian @ qdot
 
+    @property
+    def copy(self) -> Self:
+        return ComputeMuscleFiberVelocityRigidTendon(mx_symbolic=self.mx_variable)
+
 
 class ComputeMuscleFiberVelocityFlexibleTendonFromForceDefects(ComputeMuscleFiberVelocityAsVariable):
     """
     Compute the muscle fiber velocity by inverting the force-velocity relationship.
     """
-
-    def __init__(self, mx_symbolic: MX = None) -> None:
-        """
-        Initialize the ComputeMuscleFiberVelocityFlexibleTendonFromForceDefects class.
-
-        Parameters
-        ----------
-        mx_symbolic: MX
-            The symbolic variable representing the muscle fiber velocity.
-        """
-        super().__init__(mx_symbolic)
 
     def __call__(
         self,
@@ -137,6 +135,10 @@ class ComputeMuscleFiberVelocityFlexibleTendonFromForceDefects(ComputeMuscleFibe
         )
 
         return newton_method(i0=muscle_fiber_velocity_initial_guess, i1=muscle_fiber_length, i2=activation, i3=q)["o0"]
+
+    @property
+    def copy(self) -> Self:
+        return ComputeMuscleFiberVelocityFlexibleTendonFromForceDefects(mx_symbolic=self.mx_variable)
 
 
 class ComputeMuscleFiberVelocityFlexibleTendonFromVelocityDefects(ComputeMuscleFiberVelocityAsVariable):
@@ -226,6 +228,10 @@ class ComputeMuscleFiberVelocityFlexibleTendonFromVelocityDefects(ComputeMuscleF
 
         return newton_method(i0=muscle_fiber_velocity_initial_guess, i1=muscle_fiber_length, i2=activation, i3=q)["o0"]
 
+    @property
+    def copy(self) -> Self:
+        return ComputeMuscleFiberVelocityFlexibleTendonFromVelocityDefects(mx_symbolic=self.mx_variable)
+
 
 class ComputeMuscleFiberVelocityFlexibleTendonLinearized(ComputeMuscleFiberVelocityAsVariable):
     """
@@ -278,6 +284,10 @@ class ComputeMuscleFiberVelocityFlexibleTendonLinearized(ComputeMuscleFiberVeloc
         )
 
         return muscle_velocity
+
+    @property
+    def copy(self) -> Self:
+        return ComputeMuscleFiberVelocityFlexibleTendonLinearized(mx_symbolic=self.mx_variable)
 
 
 class ComputeMuscleFiberVelocityFlexibleTendonQuadratic(ComputeMuscleFiberVelocityAsVariable):
@@ -346,6 +356,10 @@ class ComputeMuscleFiberVelocityFlexibleTendonQuadratic(ComputeMuscleFiberVeloci
         # or computed_normalized_velocity = (-polynomial_slope - sqrt(discriminant)) / (2 * polynomial_quadratic_coeff)
 
         return muscle.denormalize_muscle_fiber_velocity(normalized_muscle_fiber_velocity=computed_normalized_velocity)
+
+    @property
+    def copy(self) -> Self:
+        return ComputeMuscleFiberVelocityFlexibleTendonQuadratic(mx_symbolic=self.mx_variable)
 
 
 class ComputeMuscleFiberVelocityMethods(Enum):

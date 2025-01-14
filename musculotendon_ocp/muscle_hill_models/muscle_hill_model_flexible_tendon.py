@@ -1,7 +1,5 @@
-from typing import override
-
-from casadi import MX, exp, cos, Function, sqrt
-from scipy.odr import polynomial
+from typing import override, Self
+from casadi import MX, exp
 
 from .compute_muscle_fiber_length import (
     ComputeMuscleFiberLengthRigidTendon,
@@ -54,6 +52,29 @@ class MuscleHillModelFlexibleTendon(MuscleHillModelRigidTendon):
         self.c2 = c2
         self.c3 = c3
         self.kt = kt
+
+    @override
+    @property
+    def copy(self) -> Self:
+        return MuscleHillModelFlexibleTendon(
+            name=self.name,
+            c1=self.c1,
+            c2=self.c2,
+            c3=self.c3,
+            kt=self.kt,
+            maximal_force=self.maximal_force,
+            optimal_length=self.optimal_length,
+            tendon_slack_length=self.tendon_slack_length,
+            maximal_velocity=self.maximal_velocity,
+            label=self.label,
+            compute_force_passive=self.compute_force_passive.copy,
+            compute_force_active=self.compute_force_active.copy,
+            compute_force_velocity=self.compute_force_velocity.copy,
+            compute_force_damping=self.compute_force_damping.copy,
+            compute_pennation_angle=self.compute_pennation_angle.copy,
+            compute_muscle_fiber_length=self.compute_muscle_fiber_length.copy,
+            compute_muscle_fiber_velocity=self.compute_muscle_fiber_velocity.copy,
+        )
 
     def normalize_tendon_length(self, tendon_length: MX) -> MX:
         return tendon_length / self.tendon_slack_length

@@ -34,6 +34,99 @@ def test_muscle_biorbd_model_wrong_constructor():
         )
 
 
+def test_copy():
+    model = RigidbodyModels.WithMuscles(
+        model_path,
+        muscles=[
+            MuscleHillModels.RigidTendon(
+                name="Mus1", maximal_force=500, optimal_length=0.1, tendon_slack_length=0.123, maximal_velocity=5.0
+            ),
+            MuscleHillModels.FlexibleTendon(
+                name="Mus1",
+                maximal_force=500,
+                optimal_length=0.1,
+                tendon_slack_length=0.123,
+                maximal_velocity=5.0,
+                compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityMethods.FlexibleTendonFromVelocityDefects(),
+            ),
+            MuscleHillModels.FlexibleTendon(
+                name="Mus1",
+                maximal_force=500,
+                optimal_length=0.1,
+                tendon_slack_length=0.123,
+                maximal_velocity=5.0,
+                compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityMethods.FlexibleTendonFromForceDefects(),
+            ),
+            MuscleHillModels.FlexibleTendon(
+                name="Mus1",
+                maximal_force=500,
+                optimal_length=0.1,
+                tendon_slack_length=0.123,
+                maximal_velocity=5.0,
+                compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityMethods.FlexibleTendonLinearized(),
+            ),
+            MuscleHillModels.FlexibleTendon(
+                name="Mus1",
+                maximal_force=500,
+                optimal_length=0.1,
+                tendon_slack_length=0.123,
+                maximal_velocity=5.0,
+                compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityMethods.FlexibleTendonQuadratic(),
+            ),
+        ],
+    )
+
+    copied_model = model.copy
+    assert copied_model.path == model.path
+    assert copied_model.nb_muscles == 5
+
+    # Test all the muscles are of type the same type as original with the same parameters but is a copy
+    for new_muscle, old_muscle in zip(copied_model.muscles, model.muscles):
+        assert isinstance(new_muscle, old_muscle.__class__)
+        assert new_muscle.maximal_force == old_muscle.maximal_force
+        assert new_muscle.optimal_length == old_muscle.optimal_length
+        assert new_muscle.tendon_slack_length == old_muscle.tendon_slack_length
+
+        id(new_muscle) != id(old_muscle)
+
+    # Test that it did not modify the original model
+    assert model.nb_muscles == 5
+    for i, muscles in enumerate(model.muscles):
+        if i == 0:
+            assert isinstance(muscles, MuscleHillModels.RigidTendon.value)
+        else:
+            assert isinstance(muscles, MuscleHillModels.FlexibleTendon.value)
+
+        if i == 1:
+            assert isinstance(
+                muscles.compute_muscle_fiber_velocity,
+                ComputeMuscleFiberVelocityMethods.FlexibleTendonFromVelocityDefects.value,
+            )
+        else:
+            assert not isinstance(
+                muscles.compute_muscle_fiber_velocity,
+                ComputeMuscleFiberVelocityMethods.FlexibleTendonFromVelocityDefects.value,
+            )
+
+    # Test that all the mx_variables are shared
+    assert id(copied_model.q_mx) == id(model.q_mx)
+    assert id(copied_model.qdot_mx) == id(model.qdot_mx)
+    assert id(copied_model.activations_mx) == id(model.activations_mx)
+    assert id(copied_model.muscle_fiber_lengths_mx) == id(model.muscle_fiber_lengths_mx)
+    assert id(copied_model.muscle_fiber_velocities_mx) == id(model.muscle_fiber_velocities_mx)
+    assert id(copied_model.muscle_fiber_velocity_initial_guesses_mx) == id(
+        model.muscle_fiber_velocity_initial_guesses_mx
+    )
+
+    for copied_muscle, muscle in zip(copied_model.muscles, model.muscles):
+        assert id(copied_muscle.compute_muscle_fiber_length.mx_variable) == id(
+            muscle.compute_muscle_fiber_length.mx_variable
+        )
+        assert id(copied_muscle.compute_muscle_fiber_velocity.mx_variable) == id(
+            muscle.compute_muscle_fiber_velocity.mx_variable
+        )
+
+
 def test_copy_with_all_flexible_tendons():
     model = RigidbodyModels.WithMuscles(
         model_path,

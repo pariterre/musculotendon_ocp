@@ -1,4 +1,4 @@
-from typing import override
+from typing import override, Self
 
 from casadi import MX
 
@@ -76,6 +76,25 @@ class MuscleHillModelRigidTendon(MuscleHillModelAbstract):
             compute_pennation_angle=compute_pennation_angle,
             compute_muscle_fiber_length=compute_muscle_fiber_length,
             compute_muscle_fiber_velocity=compute_muscle_fiber_velocity,
+        )
+
+    @override
+    @property
+    def copy(self) -> Self:
+        return MuscleHillModelRigidTendon(
+            name=self.name,
+            maximal_force=self.maximal_force,
+            optimal_length=self.optimal_length,
+            tendon_slack_length=self.tendon_slack_length,
+            maximal_velocity=self.maximal_velocity,
+            label=self.label,
+            compute_force_passive=self.compute_force_passive.copy,
+            compute_force_active=self.compute_force_active.copy,
+            compute_force_velocity=self.compute_force_velocity.copy,
+            compute_force_damping=self.compute_force_damping.copy,
+            compute_pennation_angle=self.compute_pennation_angle.copy,
+            compute_muscle_fiber_length=self.compute_muscle_fiber_length.copy,
+            compute_muscle_fiber_velocity=self.compute_muscle_fiber_velocity.copy,
         )
 
     @override

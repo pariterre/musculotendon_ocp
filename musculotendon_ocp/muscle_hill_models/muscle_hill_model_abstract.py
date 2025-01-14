@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from functools import cached_property
-from typing import Any, Callable, Iterable, Protocol
+from typing import Any, Callable, Iterable, Protocol, Self
 
 import biorbd_casadi as biorbd
 from casadi import MX, Function, DM
@@ -22,6 +22,12 @@ class ComputeForcePassive(Protocol):
             The normalized passive force corresponding to the given muscle length
         """
 
+    @property
+    def copy(self) -> Self:
+        """
+        Get a copy of the passive force-length relationship
+        """
+
 
 class ComputeForceActive(Protocol):
     def __call__(self, normalized_muscle_length: MX) -> MX:
@@ -37,6 +43,12 @@ class ComputeForceActive(Protocol):
         -------
         MX
             The normalized active force corresponding to the given muscle length
+        """
+
+    @property
+    def copy(self) -> Self:
+        """
+        Get a copy of the active force-length relationship
         """
 
 
@@ -56,6 +68,12 @@ class ComputeForceVelocity(Protocol):
         -------
         MX
             The normalized force corresponding to the given muscle length and velocity
+        """
+
+    @property
+    def copy(self) -> Self:
+        """
+        Get a copy of the force-velocity relationship
         """
 
     def inverse(force_velocity_inverse: MX) -> MX:
@@ -104,13 +122,7 @@ class ComputeForceVelocity(Protocol):
         """
 
 
-class ComputeForceDamping:
-    @property
-    def factor(self):
-        """
-        Return the factor of the damping
-        """
-
+class ComputeForceDamping(Protocol):
     def __call__(self, normalized_muscle_fiber_velocity: MX) -> MX:
         """
         Compute the normalized force from the damping
@@ -124,6 +136,18 @@ class ComputeForceDamping:
         -------
         MX
             The normalized force corresponding to the given muscle velocity
+        """
+
+    @property
+    def copy(self) -> Self:
+        """
+        Get a copy of the damping
+        """
+
+    @property
+    def factor(self):
+        """
+        Return the factor of the damping
         """
 
 
@@ -141,6 +165,12 @@ class ComputePennationAngle(Protocol):
         -------
         MX
             The pennation angle corresponding to the given muscle length
+        """
+
+    @property
+    def copy(self) -> Self:
+        """
+        Get a copy of the pennation angle
         """
 
     def apply(self, muscle_fiber_length: MX, element: MX) -> MX:
@@ -212,6 +242,12 @@ class ComputeMuscleFiberLength(Protocol):
         """
 
     @property
+    def copy(self) -> Self:
+        """
+        Get a copy of the muscle fiber length function
+        """
+
+    @property
     def mx_variable(self) -> MX:
         """
         Get the muscle fiber length MX
@@ -256,6 +292,12 @@ class ComputeMuscleFiberVelocity(Protocol):
         -------
         MX
             The muscle length
+        """
+
+    @property
+    def copy(self) -> Self:
+        """
+        Get a copy of the muscle fiber velocity function
         """
 
     @property
@@ -335,6 +377,13 @@ class MuscleHillModelAbstract(ABC):
         self.compute_pennation_angle = compute_pennation_angle
         self.compute_muscle_fiber_length = compute_muscle_fiber_length
         self.compute_muscle_fiber_velocity = compute_muscle_fiber_velocity
+
+    @property
+    @abstractmethod
+    def copy(self) -> Self:
+        """
+        Get a copy of the muscle model
+        """
 
     @property
     def name(self) -> str:

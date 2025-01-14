@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import Self
 
 from casadi import MX, exp
 
@@ -38,6 +39,23 @@ class ComputeForceActiveHillType:
         self.b23 = b23
         self.b33 = b33
         self.b43 = b43
+
+    @property
+    def copy(self) -> Self:
+        return ComputeForceActiveHillType(
+            b11=self.b11,
+            b21=self.b21,
+            b31=self.b31,
+            b41=self.b41,
+            b12=self.b12,
+            b22=self.b22,
+            b32=self.b32,
+            b42=self.b42,
+            b13=self.b13,
+            b23=self.b23,
+            b33=self.b33,
+            b43=self.b43,
+        )
 
     def __call__(self, normalized_muscle_fiber_length: MX) -> MX:
 

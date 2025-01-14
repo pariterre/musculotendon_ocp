@@ -32,8 +32,36 @@ class RigidbodyModelWithMuscles(BiorbdModel):
 
         self.muscles = muscles
 
+    @override
+    @property
+    def copy(self) -> Self:
+        new_muscles = []
+        for muscle in self.muscles:
+            new_muscles.append(muscle.copy)
+
+            # Keep the same mx_variables though (by overwriting the cached_property)
+            new_muscles[-1].activation_mx = muscle.activation_mx
+            new_muscles[-1].muscle_fiber_length_mx = muscle.muscle_fiber_length_mx
+            new_muscles[-1].muscle_fiber_velocity_mx = muscle.muscle_fiber_velocity_mx
+            new_muscles[-1].tendon_length_mx = muscle.tendon_length_mx
+
+        new_model = RigidbodyModelWithMuscles(
+            bio_model=self.path,
+            friction_coefficients=self._friction_coefficients,
+            segments_to_apply_external_forces=self._segments_to_apply_external_forces,
+            muscles=new_muscles,
+        )
+
+        new_model.q_mx = self.q_mx
+        new_model.qdot_mx = self.qdot_mx
+        new_model.activations_mx = self.activations_mx
+        new_model.muscle_fiber_lengths_mx = self.muscle_fiber_lengths_mx
+        new_model.muscle_fiber_velocities_mx = self.muscle_fiber_velocities_mx
+        new_model.muscle_fiber_velocity_initial_guesses_mx = self.muscle_fiber_velocity_initial_guesses_mx
+
+        return new_model
+
     def copy_with_all_flexible_tendons(self) -> Self:
-        # TODO Test this
         new_muscles = []
         for muscle in self.muscles:
             new_muscles.append(
@@ -57,13 +85,18 @@ class RigidbodyModelWithMuscles(BiorbdModel):
                 )
             )
 
-            # Keep the same mx_variables though
+            # Keep the same mx_variables though (by overwriting the cached_property)
             new_muscles[-1].activation_mx = muscle.activation_mx
             new_muscles[-1].muscle_fiber_length_mx = muscle.muscle_fiber_length_mx
             new_muscles[-1].muscle_fiber_velocity_mx = muscle.muscle_fiber_velocity_mx
             new_muscles[-1].tendon_length_mx = muscle.tendon_length_mx
 
-        new_model = RigidbodyModelWithMuscles(self.path, muscles=new_muscles)
+        new_model = RigidbodyModelWithMuscles(
+            bio_model=self.path,
+            friction_coefficients=self._friction_coefficients,
+            segments_to_apply_external_forces=self._segments_to_apply_external_forces,
+            muscles=new_muscles,
+        )
         new_model.q_mx = self.q_mx
         new_model.qdot_mx = self.qdot_mx
         new_model.activations_mx = self.activations_mx

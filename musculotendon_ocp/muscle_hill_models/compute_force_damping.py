@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import Self
 
 from casadi import MX
 
@@ -14,6 +15,10 @@ class ComputeForceDampingConstant:
         self._factor = factor
 
     @property
+    def copy(self) -> Self:
+        return ComputeForceDampingConstant(factor=self.factor)
+
+    @property
     def factor(self):
         return self._factor
 
@@ -24,6 +29,10 @@ class ComputeForceDampingConstant:
 class ComputeForceDampingLinear:
     def __init__(self, factor: float = 0.1):
         self._factor = factor
+
+    @property
+    def copy(self) -> Self:
+        return ComputeForceDampingLinear(factor=self.factor)
 
     @property
     def factor(self):

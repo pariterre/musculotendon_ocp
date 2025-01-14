@@ -1,6 +1,7 @@
 from enum import Enum
+from typing import Self
 
-from casadi import MX, log as logn, sqrt, sinh, log10
+from casadi import MX, log as logn, sqrt, sinh
 
 from .muscle_hill_model_abstract import ComputeForceVelocity
 
@@ -23,6 +24,10 @@ class ComputeForceVelocityHillType:
         self.d2 = d2
         self.d3 = d3
         self.d4 = d4
+
+    @property
+    def copy(self) -> Self:
+        return ComputeForceVelocityHillType(d1=self.d1, d2=self.d2, d3=self.d3, d4=self.d4)
 
     def __call__(self, normalized_muscle_fiber_velocity: MX) -> MX:
         # alias so the next line is not too long

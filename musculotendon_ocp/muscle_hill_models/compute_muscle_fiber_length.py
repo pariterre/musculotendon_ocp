@@ -1,5 +1,6 @@
 from enum import Enum
 from functools import cached_property
+from typing import Self
 
 import biorbd_casadi as biorbd
 from casadi import MX, Function, rootfinder
@@ -20,6 +21,10 @@ class ComputeMuscleFiberLengthAsVariable:
 
     def __init__(self, mx_symbolic: MX = None) -> None:
         self._mx_variable = MX.sym("muscle_fiber_length", 1, 1) if mx_symbolic is None else mx_symbolic
+
+    @property
+    def copy(self) -> Self:
+        return ComputeMuscleFiberLengthAsVariable(mx_symbolic=self.mx_variable)
 
     @cached_property
     def mx_variable(self) -> MX:
@@ -58,6 +63,10 @@ class ComputeMuscleFiberLengthRigidTendon(ComputeMuscleFiberLengthAsVariable):
 
         # TODO Include the pennation angle?
         return muscle_tendon_length - muscle.tendon_slack_length
+
+    @property
+    def copy(self) -> Self:
+        return ComputeMuscleFiberLengthRigidTendon(mx_symbolic=self.mx_variable)
 
 
 class ComputeMuscleFiberLengthInstantaneousEquilibrium(ComputeMuscleFiberLengthAsVariable):
@@ -114,6 +123,10 @@ class ComputeMuscleFiberLengthInstantaneousEquilibrium(ComputeMuscleFiberLengthA
         newton_method = rootfinder("newton_method", "newton", equality_constraint, {"error_on_fail": True})
         # Evaluate the muscle fiber length
         return newton_method(i0=0, i1=activation, i2=q)["o0"]
+
+    @property
+    def copy(self) -> Self:
+        return ComputeMuscleFiberLengthInstantaneousEquilibrium(mx_symbolic=self.mx_variable)
 
 
 class ComputeMuscleFiberLengthMethods(Enum):
