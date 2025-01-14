@@ -1,12 +1,12 @@
-import os
+import pathlib
 
 from musculotendon_ocp import RigidbodyModels
 
+
 model_path = (
-    (os.getcwd() + "/musculotendon_ocp/rigidbody_models/models/one_muscle_holding_a_cube.bioMod")
-    .replace("\\", "/")
-    .replace("c:/", "C:/")
-)
+    pathlib.Path(__file__).parent.resolve()
+    / "../../musculotendon_ocp/rigidbody_models/models/one_muscle_holding_a_cube.bioMod"
+).as_posix()
 
 
 def test_rigidbody_models():

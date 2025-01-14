@@ -1,4 +1,4 @@
-import os
+import pathlib
 
 from casadi import Function
 from musculotendon_ocp import (
@@ -8,11 +8,11 @@ from musculotendon_ocp import (
 )
 import numpy as np
 
+
 model_path = (
-    (os.getcwd() + "/musculotendon_ocp/rigidbody_models/models/one_muscle_holding_a_cube.bioMod")
-    .replace("\\", "/")
-    .replace("c:/", "C:/")
-)
+    pathlib.Path(__file__).parent.resolve()
+    / "../../musculotendon_ocp/rigidbody_models/models/one_muscle_holding_a_cube.bioMod"
+).as_posix()
 
 
 def test_prepare_forward_dynamics_mx():

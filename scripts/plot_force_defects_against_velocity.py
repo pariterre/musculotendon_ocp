@@ -34,7 +34,7 @@ previous_lmdot = []
 
 def main() -> None:
     model = RigidbodyModels.WithMuscles(
-        "musculotendon_ocp/rigidbody_models/models/one_muscle_holding_a_cube.bioMod",
+        "../musculotendon_ocp/rigidbody_models/models/one_muscle_holding_a_cube.bioMod",
         muscles=[
             MuscleHillModels.RigidTendon(
                 name="Mus1",

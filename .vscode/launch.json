@@ -9,6 +9,7 @@
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/scripts/ocp.py",
+            "cwd": "${workspaceFolder}/scripts",
             "console": "integratedTerminal",
         },
         {
@@ -16,6 +17,7 @@
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/scripts/validate_velocity_rigid_tendon.py",
+            "cwd": "${workspaceFolder}/scripts",
             "console": "integratedTerminal",
         },
         {
@@ -23,6 +25,7 @@
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/scripts/validate_velocity_flexible_tendon.py",
+            "cwd": "${workspaceFolder}/scripts",
             "console": "integratedTerminal",
         },
         {
@@ -30,6 +33,7 @@
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/scripts/plot_fvm_defects_against_velocity.py",
+            "cwd": "${workspaceFolder}/scripts",
             "console": "integratedTerminal",
         },
         {
@@ -37,6 +41,7 @@
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/scripts/plot_force_defects_against_velocity.py",
+            "cwd": "${workspaceFolder}/scripts",
             "console": "integratedTerminal",
         },
         {
@@ -44,6 +49,7 @@
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/scripts/plot_dvm_against_dt.py",
+            "cwd": "${workspaceFolder}/scripts",
             "console": "integratedTerminal",
         },
         {
@@ -51,6 +57,7 @@
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/scripts/plot_dvm_against_varying_lengths.py",
+            "cwd": "${workspaceFolder}/scripts",
             "console": "integratedTerminal",
         },
     ]

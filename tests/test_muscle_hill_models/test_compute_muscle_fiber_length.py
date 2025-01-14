@@ -1,16 +1,16 @@
 from functools import partial
-import os
+import pathlib
 
 from casadi import MX
 from musculotendon_ocp import RigidbodyModels, MuscleHillModels, ComputeMuscleFiberLengthMethods
 import numpy as np
 import pytest
 
+
 model_path = (
-    (os.getcwd() + "/musculotendon_ocp/rigidbody_models/models/one_muscle_holding_a_cube.bioMod")
-    .replace("\\", "/")
-    .replace("c:/", "C:/")
-)
+    pathlib.Path(__file__).parent.resolve()
+    / "../../musculotendon_ocp/rigidbody_models/models/one_muscle_holding_a_cube.bioMod"
+).as_posix()
 
 
 def test_compute_muscle_fiber_length_methods():

@@ -1,15 +1,15 @@
-import os
+import pathlib
 
 from bioptim import OptimalControlProgram, DynamicsList, CustomPlot
 from casadi import Function, sum1
 from musculotendon_ocp import MuscleHillModels, RigidbodyModels, PlotHelpers, DynamicsHelpers
 import numpy as np
 
+
 model_path = (
-    (os.getcwd() + "/musculotendon_ocp/rigidbody_models/models/one_muscle_holding_a_cube.bioMod")
-    .replace("\\", "/")
-    .replace("c:/", "C:/")
-)
+    pathlib.Path(__file__).parent.resolve()
+    / "../../musculotendon_ocp/rigidbody_models/models/one_muscle_holding_a_cube.bioMod"
+).as_posix()
 
 
 def test_add_tendon_forces_plot_to_ocp():
