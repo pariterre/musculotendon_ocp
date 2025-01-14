@@ -3,7 +3,7 @@ from functools import cached_property
 from typing import Self
 
 import biorbd_casadi as biorbd
-from casadi import MX, Function, rootfinder, symvar, cos, sqrt, if_else, gt
+from casadi import MX, Function, rootfinder, symvar, cos, sqrt, if_else, lt, fabs
 
 from .muscle_hill_model_abstract import MuscleHillModelAbstract, ComputeMuscleFiberVelocity
 from .compute_muscle_fiber_length import ComputeMuscleFiberLengthRigidTendon
@@ -352,11 +352,16 @@ class ComputeMuscleFiberVelocityFlexibleTendonQuadratic(ComputeMuscleFiberVeloci
         discriminant = polynomial_slope**2 - 4 * polynomial_quadratic_coeff * polynomial_bias
 
         # We may have to switch from the first root to the second one at some velocity levels, e.g. positive or negative
-        computed_normalized_velocity = (-polynomial_slope + sqrt(discriminant)) / (2 * polynomial_quadratic_coeff)
+        # computed_normalized_velocity = (-polynomial_slope + sqrt(discriminant)) / (2 * polynomial_quadratic_coeff)
         # or computed_normalized_velocity = (-polynomial_slope - sqrt(discriminant)) / (2 * polynomial_quadratic_coeff)
-        # computed_normalized_velocity = (
-        #     -polynomial_slope + if_else(gt(normalized_velocity, 0), 1, -1) * sqrt(discriminant)
-        # ) / (2 * polynomial_quadratic_coeff)
+        computed_normalized_velocity_plus = (-polynomial_slope + sqrt(discriminant)) / (2 * polynomial_quadratic_coeff)
+        computed_normalized_velocity_minus = (-polynomial_slope - sqrt(discriminant)) / (2 * polynomial_quadratic_coeff)
+        computed_normalized_velocity = if_else(
+            fabs(computed_normalized_velocity_plus - normalized_velocity)
+            < fabs(computed_normalized_velocity_minus - normalized_velocity),
+            computed_normalized_velocity_plus,
+            computed_normalized_velocity_minus,
+        )
 
         return muscle.denormalize_muscle_fiber_velocity(normalized_muscle_fiber_velocity=computed_normalized_velocity)
 
