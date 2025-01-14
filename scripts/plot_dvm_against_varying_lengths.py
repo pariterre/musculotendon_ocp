@@ -21,6 +21,38 @@ import numpy as np
 # the results are wrong, the linearized fails. At 0.001, the results are correct for all of them.
 
 
+def muscle_fiber_length_dynamics(_, x, fn_to_dm: Callable, activations: np.ndarray, q: np.ndarray):
+    muscle_fiber_lengths = x
+    fiber_lengths_dot = np.array(
+        fn_to_dm(
+            q=q,
+            qdot=np.zeros_like(q),
+            activations=activations,
+            muscle_fiber_lengths=muscle_fiber_lengths,
+            muscle_fiber_velocity_initial_guesses=initial_velocity_guesses[-1],
+        )["output"]
+    ).squeeze()
+    return fiber_lengths_dot
+
+
+def update_initial_velocity_guesses(_, x, fn_to_dm: Callable, activations: np.ndarray, q: np.ndarray):
+    muscle_fiber_lengths = x
+    initial_velocity_guesses.append(
+        np.array(
+            fn_to_dm(
+                q=q,
+                qdot=np.zeros_like(q),
+                activations=activations,
+                muscle_fiber_lengths=muscle_fiber_lengths,
+                muscle_fiber_velocity_initial_guesses=initial_velocity_guesses[-1],
+            )["output"]
+        ).squeeze()
+    )
+
+
+initial_velocity_guesses = []
+
+
 def _compute_equilibrated_lengths(
     model: RigidbodyModelWithMuscles, activations: np.ndarray, q: np.ndarray, qdot: np.ndarray
 ) -> np.ndarray:
@@ -54,8 +86,8 @@ def optimize_for_tendon_to_optimal_length_ratio(
     target_ratio: float,
     target_force: float,
     q_initial_guess: np.ndarray,
-    reference_muscle_label: str,
-) -> RigidbodyModelWithMuscles:
+    reference_muscle_index: int,
+) -> tuple[RigidbodyModelWithMuscles, np.ndarray]:
     # TODO Test this
 
     if len(model.name_dof) != 1 or model.name_dof[0] != "Cube_TransZ":
@@ -66,7 +98,6 @@ def optimize_for_tendon_to_optimal_length_ratio(
         raise ValueError("This function is only implemented for models with one muscle in the bioMod file")
 
     optimized_model = model.copy
-    reference_index = [m.label for m in model.muscles].index(reference_muscle_label)
 
     qdot = np.array([0.0] * model.nb_qdot)
     activations = np.array([1.0] * model.nb_muscles)
@@ -79,39 +110,43 @@ def optimize_for_tendon_to_optimal_length_ratio(
         delta.append(optimized_muscle.tendon_slack_length - muscle.tendon_slack_length)
 
     # All the delta are supposed to be the same, make sure of this, then use the referenced one
-    if not all([d == delta[reference_index] for d in delta]):
+    if not all([d == delta[reference_muscle_index] for d in delta]):
         raise ValueError(
             "All the tendon_slack_length / optimal_length ratios are supposed to be the same. This means "
             "your model is not correctly defined."
         )
-    delta = delta[reference_index]
+    delta = delta[reference_muscle_index]
 
     # Optimize the value of q so the resulting muscle forces are the target_forces
     from scipy.optimize import minimize
 
     def objective(q: np.ndarray) -> float:
         muscle_forces = _compute_muscle_forces(optimized_model, activations, q, qdot)
-        value = muscle_forces[reference_index] - target_force
+        value = muscle_forces[reference_muscle_index] - target_force
         return value**2
 
     result = minimize(objective, q_initial_guess + delta, method="Nelder-Mead")
-    q = result.x
+    optimized_q = result.x
 
     # Validate that the optimization actually converged
-    muscle_forces = _compute_muscle_forces(optimized_model, activations, q, qdot)
-    if np.abs(muscle_forces[reference_index] - target_force) > 0.1:  # Tolerance of 1N
+    muscle_forces = _compute_muscle_forces(optimized_model, activations, optimized_q, qdot)
+    if np.abs(muscle_forces[reference_muscle_index] - target_force) > 0.1:  # Tolerance of 1N
         raise ValueError(
-            f"The optimization did not converge. The muscle force is {muscle_forces[reference_index]:.1f} "
+            f"The optimization did not converge. The muscle force is {muscle_forces[reference_muscle_index]:.1f} "
             f"instead of the target force {target_force}."
         )
 
-    return optimized_model
+    return optimized_model, optimized_q
 
 
 def main() -> None:
     target_force = 500.0
     ratios = [0.1, 0.2, 0.5, 0.75, 1.0, 1.5, 2.0, 5.0, 10.0]
+    ratios = [0.1, 0.2, 0.5, 0.75, 1.0, 1.5, 2.0, 5.0, 10.0]
     colors = ["b", "g", "y", "m", "c"]
+    activation_at_start = 0.01
+    activation_at_end = 1.0
+    reference_muscle_label = "Force defects"
     model = RigidbodyModels.WithMuscles(
         "musculotendon_ocp/rigidbody_models/models/one_muscle_holding_a_cube.bioMod",
         muscles=[
@@ -170,17 +205,135 @@ def main() -> None:
             ),
         ],
     )
+    muscle_count = len(model.muscles)
+    reference_index = [m.label for m in model.muscles].index(reference_muscle_label)
 
     for ratio in ratios:
-        resized_model = optimize_for_tendon_to_optimal_length_ratio(
+        resized_model, optimized_q = optimize_for_tendon_to_optimal_length_ratio(
             model,
             target_ratio=ratio,
             target_force=target_force,
             q_initial_guess=np.array([0.185]),
-            reference_muscle_label="Force defects",
+            reference_muscle_index=reference_index,
         )
 
-        resized_model
+        activations_at_start = np.array([activation_at_start] * muscle_count)
+        qdot = np.array([0.0])
+        initial_muscles_fiber_length = np.array(
+            resized_model.function_to_dm(
+                resized_model.muscle_fiber_lengths_equilibrated,
+                activations=activations_at_start,
+                q=optimized_q,
+                qdot=qdot,
+            )
+        )[:, 0]
+        initial_muscles_fiber_velocity = np.array([0.0] * muscle_count)
+
+        activations_at_end = np.array([activation_at_end] * muscle_count)
+        muscles_fiber_length_dynamics_fn = partial(
+            muscle_fiber_length_dynamics,
+            fn_to_dm=resized_model.to_casadi_function(
+                resized_model.muscle_fiber_velocities,
+                "activations",
+                "q",
+                "qdot",
+                "muscle_fiber_lengths",
+                "muscle_fiber_velocity_initial_guesses",
+            ),
+            activations=activations_at_end,
+            q=optimized_q,
+        )
+        inter_integration_step_fn = partial(
+            update_initial_velocity_guesses,
+            fn_to_dm=resized_model.to_casadi_function(
+                resized_model.muscle_fiber_velocities,
+                "activations",
+                "q",
+                "qdot",
+                "muscle_fiber_lengths",
+                "muscle_fiber_velocity_initial_guesses",
+            ),
+            activations=activations_at_end,
+            q=optimized_q,
+        )
+        muscles_force_fn = resized_model.to_casadi_function(
+            resized_model.muscle_forces,
+            "activations",
+            "q",
+            "qdot",
+            "muscle_fiber_lengths",
+            "muscle_fiber_velocities",
+        )
+
+        # Reset the previous muscle fiber velocities container
+        initial_velocity_guesses.clear()
+        initial_velocity_guesses.append(initial_muscles_fiber_velocity)
+
+        # Integrate the muscle fiber length
+        t, muscles_fiber_length = precise_rk4(
+            muscles_fiber_length_dynamics_fn,
+            y0=initial_muscles_fiber_length,
+            t_span=[0, 0.05],
+            dt=0.0001,
+            inter_step_callback=inter_integration_step_fn,
+        )
+
+        # Dispatch the results and compute the resulting muscle forces
+        muscles_fiber_length: np.ndarray = muscles_fiber_length.T
+        muscles_fiber_velocity: np.ndarray = np.array(initial_velocity_guesses)
+        muscles_force = np.array(
+            [
+                muscles_force_fn(
+                    activations=activations_at_end,
+                    q=optimized_q,
+                    qdot=qdot,
+                    muscle_fiber_lengths=muscles_fiber_length[i, :],
+                    muscle_fiber_velocities=muscles_fiber_velocity[i, :],
+                )["output"]
+                for i in range(muscles_fiber_length.shape[0])
+            ]
+        ).squeeze()
+
+        plt.figure(f"Muscle fiber velocity and force for a ratio of {ratio}")
+        # Separate into three rows plot
+
+        # Plot muscle velocities
+        plt.subplot(3, 1, 1)
+        for m in range(len(resized_model.muscles)):
+            plt.plot(t, muscles_fiber_velocity[:, m], label=resized_model.muscles[m].label, color=colors[m], marker="o")
+        plt.title(f"Muscle fiber velocity")
+        plt.xlabel("Time (s)")
+        plt.ylabel("Muscle fiber velocity (m/s)")
+        plt.grid(visible=True)
+        plt.legend()
+
+        # Plot muscle forces
+        plt.subplot(3, 1, 2)
+        for m in range(len(resized_model.muscles)):
+            plt.plot(t, muscles_force[:, m], label=resized_model.muscles[m].label, color=colors[m], marker="o")
+        plt.title(f"Impulse")
+        plt.xlabel("Time (s)")
+        plt.ylabel("Impulse (N * s)")
+        plt.grid(visible=True)
+        plt.legend()
+
+        # Plot muscle forces
+        plt.subplot(3, 1, 3)
+        for m in range(len(resized_model.muscles)):
+            diff_force = muscles_force[:, m] - muscles_force[:, reference_index]
+            impulse = np.zeros_like(diff_force)
+            # TODO Cumsum instead of by time
+            impulse[1:-1] = (diff_force[2:] + diff_force[:-2]) / 2 * (t[2:] - t[:-2])
+            plt.plot(t, impulse, label=model.muscles[m].label, color=colors[m], marker="o")
+        plt.title(f"Difference of impulse")
+        plt.xlabel("Time (s)")
+        plt.ylabel("Difference of impulse (N * s)")
+        plt.grid(visible=True)
+        plt.legend()
+
+        plt.tight_layout()
+
+    plt.show()
 
 
 if __name__ == "__main__":
