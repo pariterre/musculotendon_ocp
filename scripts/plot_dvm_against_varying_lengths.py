@@ -148,7 +148,7 @@ def main() -> None:
     activation_at_end = 1.0
     reference_muscle_label = "Force defects"
     model = RigidbodyModels.WithMuscles(
-        "musculotendon_ocp/rigidbody_models/models/one_muscle_holding_a_cube.bioMod",
+        "../musculotendon_ocp/rigidbody_models/models/one_muscle_holding_a_cube.bioMod",
         muscles=[
             MuscleHillModels.RigidTendon(
                 name="Mus1",

@@ -65,7 +65,7 @@ def qddot_from_muscles(model: RigidbodyModelWithMuscles, activations: MX, q: MX,
 
 def main():
     model = RigidbodyModels.WithMuscles(
-        "musculotendon_ocp/rigidbody_models/models/one_muscle_holding_a_cube.bioMod",
+        "../musculotendon_ocp/rigidbody_models/models/one_muscle_holding_a_cube.bioMod",
         muscles=[
             MuscleHillModels.RigidTendon(
                 name="Mus1", maximal_force=500, optimal_length=0.1, tendon_slack_length=0.16, maximal_velocity=5.0

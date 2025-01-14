@@ -123,7 +123,7 @@ def main(
     color: str = "k",
 ) -> None:
     model = RigidbodyModels.WithMuscles(
-        "musculotendon_ocp/rigidbody_models/models/one_muscle_holding_a_cube.bioMod",
+        "../musculotendon_ocp/rigidbody_models/models/one_muscle_holding_a_cube.bioMod",
         muscles=[
             MuscleHillModels.FlexibleTendon(
                 name="Mus1",
