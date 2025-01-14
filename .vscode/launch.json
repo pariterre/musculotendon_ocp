@@ -46,5 +46,12 @@
             "program": "${workspaceFolder}/scripts/plot_dvm_against_dt.py",
             "console": "integratedTerminal",
         },
+        {
+            "name": "Plot dVm against varying lengths",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/plot_dvm_against_varying_lengths.py",
+            "console": "integratedTerminal",
+        },
     ]
 }
