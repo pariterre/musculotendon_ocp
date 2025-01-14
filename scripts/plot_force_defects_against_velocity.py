@@ -40,7 +40,7 @@ def main() -> None:
                 name="Mus1",
                 maximal_force=1000,
                 optimal_length=0.1,
-                tendon_slack_length=0.16,
+                tendon_slack_length=0.1,
                 compute_force_damping=ComputeForceDampingMethods.Linear(factor=0.1),
                 maximal_velocity=5.0,
             ),
@@ -48,7 +48,7 @@ def main() -> None:
                 name="Mus1",
                 maximal_force=1000,
                 optimal_length=0.1,
-                tendon_slack_length=0.16,
+                tendon_slack_length=0.1,
                 compute_force_damping=ComputeForceDampingMethods.Linear(factor=0.1),
                 maximal_velocity=5.0,
                 compute_muscle_fiber_length=ComputeMuscleFiberLengthMethods.AsVariable(),
@@ -58,7 +58,7 @@ def main() -> None:
                 name="Mus1",
                 maximal_force=1000,
                 optimal_length=0.1,
-                tendon_slack_length=0.16,
+                tendon_slack_length=0.1,
                 compute_force_damping=ComputeForceDampingMethods.Linear(factor=0.1),
                 maximal_velocity=5.0,
                 compute_muscle_fiber_length=ComputeMuscleFiberLengthMethods.AsVariable(),
@@ -68,28 +68,28 @@ def main() -> None:
                 name="Mus1",
                 maximal_force=1000,
                 optimal_length=0.1,
-                tendon_slack_length=0.16,
+                tendon_slack_length=0.1,
                 compute_force_damping=ComputeForceDampingMethods.Linear(factor=0.1),
                 maximal_velocity=5.0,
                 compute_muscle_fiber_length=ComputeMuscleFiberLengthMethods.AsVariable(),
                 compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityMethods.FlexibleTendonLinearized(),
             ),
-            MuscleHillModels.FlexibleTendon(
-                name="Mus1",
-                maximal_force=1000,
-                optimal_length=0.1,
-                tendon_slack_length=0.16,
-                compute_force_damping=ComputeForceDampingMethods.Linear(factor=0.1),
-                maximal_velocity=5.0,
-                compute_muscle_fiber_length=ComputeMuscleFiberLengthMethods.AsVariable(),
-                compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityMethods.FlexibleTendonQuadratic(),
-            ),
+            # MuscleHillModels.FlexibleTendon(
+            #     name="Mus1",
+            #     maximal_force=1000,
+            #     optimal_length=0.1,
+            #     tendon_slack_length=0.1,
+            #     compute_force_damping=ComputeForceDampingMethods.Linear(factor=0.1),
+            #     maximal_velocity=5.0,
+            #     compute_muscle_fiber_length=ComputeMuscleFiberLengthMethods.AsVariable(),
+            #     compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityMethods.FlexibleTendonQuadratic(),
+            # ),
         ],
     )
     muscle_count = len(model.muscles)
 
     activations = np.array([0.5] * muscle_count)
-    q = np.array([0.290])
+    q = np.array([0.21])
     qdot = np.array([0.0])
     initial_muscles_fiber_length = np.array([0.1] * muscle_count)
     initial_muscles_fiber_velocity = np.array([-1.7] * muscle_count)
