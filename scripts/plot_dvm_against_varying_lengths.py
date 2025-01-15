@@ -147,7 +147,7 @@ def main() -> None:
     # ratios = [5.0, 10.0]
     # dts = [0.001, 0.005]
 
-    load_results = False
+    load_results = True
     save_path = "results/results.json"
     plot_graphs = True
     target_force = 500.0
@@ -372,8 +372,8 @@ def main() -> None:
     for ratio in ratios:
         row = f"{ratio:.1f}"
         for dt in dts:
-            data = results[str(ratio)][str(dt)]
-            equilibrated_t_index = data["equilibrated_t_indices"][reference_index]
+            data = results[str(ratio)][str(dt)] if str(ratio) in results and str(dt) in results[str(ratio)] else None
+            equilibrated_t_index = data["equilibrated_t_indices"][reference_index] if data is not None else None
             row += " & -" if equilibrated_t_index is None else f" & {data['t'][equilibrated_t_index]:.4f}"
         row += r"\\"
         print(row)
@@ -388,7 +388,11 @@ def main() -> None:
     if plot_graphs:
         for ratio in ratios:
             for dt in dts:
-                data = results[str(ratio)][str(dt)]
+                data = (
+                    results[str(ratio)][str(dt)] if str(ratio) in results and str(dt) in results[str(ratio)] else None
+                )
+                if data is None:
+                    continue
 
                 t = np.array(data["t"])
                 muscles_fiber_velocity = np.array(data["muscles_fiber_velocity"])
