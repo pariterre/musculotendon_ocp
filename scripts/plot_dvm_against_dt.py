@@ -193,37 +193,38 @@ def main() -> None:
             ]
         ).squeeze()
 
+        plt.figure(f"Muscle fiber velocity and force for activations {activation_at_start} -> {activation_at_end}")
+
         # Plot muscle velocities
-        plt.figure()
+        plt.subplot(3, 1, 1)
         for m in range(len(model.muscles)):
             plt.plot(t, muscles_fiber_velocity[:, m], label=model.muscles[m].label, color=colors[m], marker="o")
-        plt.title(f"Muscle fiber velocity (act {activation_at_start} -> {activation_at_end})")
+        plt.title(f"Muscle fiber velocity")
         plt.xlabel("Time (s)")
         plt.ylabel("Muscle fiber velocity (m/s)")
         plt.grid(visible=True)
         plt.legend()
 
         # Plot muscle forces
-        plt.figure()
+        plt.subplot(3, 1, 2)
         for m in range(len(model.muscles)):
             plt.plot(t, muscles_force[:, m], label=model.muscles[m].label, color=colors[m], marker="o")
-        plt.title(f"Impulse (act {activation_at_start} -> {activation_at_end})")
+        plt.title(f"Muscle force")
         plt.xlabel("Time (s)")
-        plt.ylabel("Impulse (N * s)")
+        plt.ylabel("Muscle force (N)")
         plt.grid(visible=True)
         plt.legend()
 
-        # Plot muscle forces
-        plt.figure()
+        # Plot the integrated impulse difference
+        plt.subplot(3, 1, 3)
         for m in range(len(model.muscles)):
-            diff_force = muscles_force[:, m] - muscles_force[:, reference_index]
-            impulse = np.zeros_like(diff_force)
-            # TODO Cumsum instead of by time
-            impulse[1:-1] = (diff_force[2:] + diff_force[:-2]) / 2 * (t[2:] - t[:-2])
+            cum_diff_force = np.cumsum(muscles_force[:, m] - muscles_force[:, reference_index])
+            impulse = np.zeros_like(muscles_force[:, m])
+            impulse[1:] = (cum_diff_force[1:] + cum_diff_force[:-1]) * (t[1:] - t[:-1]) / 2
             plt.plot(t, impulse, label=model.muscles[m].label, color=colors[m], marker="o")
-        plt.title(f"Difference of impulse (act {activation_at_start} -> {activation_at_end})")
+        plt.title(f"Integrated impulse difference")
         plt.xlabel("Time (s)")
-        plt.ylabel("Difference of impulse (N * s)")
+        plt.ylabel("Integrated impulse difference (N*s)")
         plt.grid(visible=True)
         plt.legend()
 

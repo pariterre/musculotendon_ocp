@@ -141,8 +141,9 @@ def optimize_for_tendon_to_optimal_length_ratio(
 
 def main() -> None:
     target_force = 500.0
-    ratios = [0.1, 0.2, 0.5, 0.75, 1.0, 1.5, 2.0, 5.0, 10.0]
-    ratios = [0.1, 0.2, 0.5, 0.75, 1.0, 1.5, 2.0, 5.0, 10.0]
+    ratios = [0.1, 0.2, 0.5, 0.75, 1.0, 1.5, 2.0, 5.0, 10.0]  # This necessitates dt=0.0001
+    # ratios = [0.5, 1.0, 5.0, 10.0]
+    dt = 0.0001
     colors = ["b", "g", "y", "m", "c"]
     activation_at_start = 0.01
     activation_at_end = 1.0
@@ -150,15 +151,15 @@ def main() -> None:
     model = RigidbodyModels.WithMuscles(
         "../musculotendon_ocp/rigidbody_models/models/one_muscle_holding_a_cube.bioMod",
         muscles=[
-            MuscleHillModels.RigidTendon(
-                name="Mus1",
-                label="Rigid",
-                maximal_force=1000,
-                optimal_length=0.1,
-                tendon_slack_length=0.1,
-                compute_force_damping=ComputeForceDampingMethods.Linear(factor=0.1),
-                maximal_velocity=5.0,
-            ),
+            # MuscleHillModels.RigidTendon(
+            #     name="Mus1",
+            #     label="Rigid",
+            #     maximal_force=1000,
+            #     optimal_length=0.1,
+            #     tendon_slack_length=0.1,
+            #     compute_force_damping=ComputeForceDampingMethods.Linear(factor=0.1),
+            #     maximal_velocity=5.0,
+            # ),
             MuscleHillModels.FlexibleTendon(
                 name="Mus1",
                 label="Force defects",
@@ -274,7 +275,7 @@ def main() -> None:
             muscles_fiber_length_dynamics_fn,
             y0=initial_muscles_fiber_length,
             t_span=[0, 0.05],
-            dt=0.0001,
+            dt=dt,
             inter_step_callback=inter_integration_step_fn,
         )
 
@@ -295,7 +296,6 @@ def main() -> None:
         ).squeeze()
 
         plt.figure(f"Muscle fiber velocity and force for a ratio of {ratio}")
-        # Separate into three rows plot
 
         # Plot muscle velocities
         plt.subplot(3, 1, 1)
@@ -311,23 +311,22 @@ def main() -> None:
         plt.subplot(3, 1, 2)
         for m in range(len(resized_model.muscles)):
             plt.plot(t, muscles_force[:, m], label=resized_model.muscles[m].label, color=colors[m], marker="o")
-        plt.title(f"Impulse")
+        plt.title(f"Muscle force")
         plt.xlabel("Time (s)")
-        plt.ylabel("Impulse (N * s)")
+        plt.ylabel("Muscle force (N)")
         plt.grid(visible=True)
         plt.legend()
 
-        # Plot muscle forces
+        # Plot the integrated impulse difference
         plt.subplot(3, 1, 3)
         for m in range(len(resized_model.muscles)):
-            diff_force = muscles_force[:, m] - muscles_force[:, reference_index]
-            impulse = np.zeros_like(diff_force)
-            # TODO Cumsum instead of by time
-            impulse[1:-1] = (diff_force[2:] + diff_force[:-2]) / 2 * (t[2:] - t[:-2])
+            cum_diff_force = np.cumsum(muscles_force[:, m] - muscles_force[:, reference_index])
+            impulse = np.zeros_like(muscles_force[:, m])
+            impulse[1:] = (cum_diff_force[1:] + cum_diff_force[:-1]) * (t[1:] - t[:-1]) / 2
             plt.plot(t, impulse, label=model.muscles[m].label, color=colors[m], marker="o")
-        plt.title(f"Difference of impulse")
+        plt.title(f"Integrated impulse difference")
         plt.xlabel("Time (s)")
-        plt.ylabel("Difference of impulse (N * s)")
+        plt.ylabel("Integrated impulse\ndifference (N*s)")
         plt.grid(visible=True)
         plt.legend()
 
