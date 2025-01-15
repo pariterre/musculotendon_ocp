@@ -148,6 +148,7 @@ def main() -> None:
     activation_at_start = 0.01
     activation_at_end = 1.0
     reference_muscle_label = "Force defects"
+    velocity_threshold = 1e-2
     model = RigidbodyModels.WithMuscles(
         "../musculotendon_ocp/rigidbody_models/models/one_muscle_holding_a_cube.bioMod",
         muscles=[
@@ -301,6 +302,12 @@ def main() -> None:
         plt.subplot(3, 1, 1)
         for m in range(len(resized_model.muscles)):
             plt.plot(t, muscles_fiber_velocity[:, m], label=resized_model.muscles[m].label, color=colors[m], marker="o")
+            # Find where the t index where the velocity is negligeable (velocity_threshold)
+            equilibrated_t_index = np.where(np.abs(muscles_fiber_velocity[:, m]) < velocity_threshold)[0]
+            if len(equilibrated_t_index) > 1:
+                # By design the index 0 is 0, so skip it
+                equilibrated_t_index = equilibrated_t_index[1]
+                plt.axvline(x=t[equilibrated_t_index], color=colors[m], linestyle="--")
         plt.title(f"Muscle fiber velocity")
         plt.xlabel("Time (s)")
         plt.ylabel("Muscle fiber velocity (m/s)")
@@ -311,6 +318,12 @@ def main() -> None:
         plt.subplot(3, 1, 2)
         for m in range(len(resized_model.muscles)):
             plt.plot(t, muscles_force[:, m], label=resized_model.muscles[m].label, color=colors[m], marker="o")
+            # Find where the t index where the velocity is negligeable (velocity_threshold)
+            equilibrated_t_index = np.where(np.abs(muscles_fiber_velocity[:, m]) < velocity_threshold)[0]
+            if len(equilibrated_t_index) > 1:
+                # By design the index 0 is 0, so skip it
+                equilibrated_t_index = equilibrated_t_index[1]
+                plt.axvline(x=t[equilibrated_t_index], color=colors[m], linestyle="--")
         plt.title(f"Muscle force")
         plt.xlabel("Time (s)")
         plt.ylabel("Muscle force (N)")
@@ -324,6 +337,12 @@ def main() -> None:
             impulse = np.zeros_like(muscles_force[:, m])
             impulse[1:] = (cum_diff_force[1:] + cum_diff_force[:-1]) * (t[1:] - t[:-1]) / 2
             plt.plot(t, impulse, label=model.muscles[m].label, color=colors[m], marker="o")
+            # Find where the t index where the velocity is negligeable (velocity_threshold)
+            equilibrated_t_index = np.where(np.abs(muscles_fiber_velocity[:, m]) < velocity_threshold)[0]
+            if len(equilibrated_t_index) > 1:
+                # By design the index 0 is 0, so skip it
+                equilibrated_t_index = equilibrated_t_index[1]
+                plt.axvline(x=t[equilibrated_t_index], color=colors[m], linestyle="--")
         plt.title(f"Integrated impulse difference")
         plt.xlabel("Time (s)")
         plt.ylabel("Integrated impulse\ndifference (N*s)")
