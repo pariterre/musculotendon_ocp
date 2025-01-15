@@ -25,6 +25,9 @@ def test_compute_muscle_fiber_length_methods():
     instantaneous_equilibrium = ComputeMuscleFiberLengthMethods.InstantaneousEquilibrium()
     assert type(instantaneous_equilibrium) == ComputeMuscleFiberLengthMethods.InstantaneousEquilibrium.value
 
+    with pytest.raises(ValueError, match="Cannot deserialize Unknown as ComputeMuscleFiberLengthMethods"):
+        ComputeMuscleFiberLengthMethods.AsVariable.deserialize({"method": "Unknown"})
+
 
 def test_compute_muscle_fiber_length_rigid_tendon():
     mus = MuscleHillModels.RigidTendon(
@@ -49,6 +52,15 @@ def test_compute_muscle_fiber_length_rigid_tendon():
         qdot=qdot,
     )
     np.testing.assert_almost_equal(muscle_fiber_length, 0.077)
+
+    # Test serialization
+    serialized = compute_muscle_fiber_length.serialize()
+    assert serialized == {"method": "ComputeMuscleFiberLengthRigidTendon"}
+    deserialized = ComputeMuscleFiberLengthMethods.RigidTendon.deserialize(serialized)
+    assert type(deserialized) == ComputeMuscleFiberLengthMethods.RigidTendon.value
+
+    with pytest.raises(ValueError, match="Cannot deserialize Unknown as ComputeMuscleFiberLengthRigidTendon"):
+        ComputeMuscleFiberLengthMethods.RigidTendon.value.deserialize({"method": "Unknown"})
 
 
 def test_compute_muscle_fiber_length_as_variable():
@@ -86,6 +98,15 @@ def test_compute_muscle_fiber_length_as_variable():
     assert isinstance(muscle_fiber_length, MX)
     assert muscle_fiber_length.name() == "muscle_fiber_length"
 
+    # Test serialization
+    serialized = compute_muscle_fiber_length.serialize()
+    assert serialized == {"method": "ComputeMuscleFiberLengthAsVariable"}
+    deserialized = ComputeMuscleFiberLengthMethods.AsVariable.deserialize(serialized)
+    assert type(deserialized) == ComputeMuscleFiberLengthMethods.AsVariable.value
+
+    with pytest.raises(ValueError, match="Cannot deserialize Unknown as ComputeMuscleFiberLengthAsVariable"):
+        ComputeMuscleFiberLengthMethods.AsVariable.value.deserialize({"method": "Unknown"})
+
 
 def test_compute_muscle_fiber_length_instantaneous_equilibrium():
     mus = MuscleHillModels.FlexibleTendonAlwaysPositive(
@@ -110,6 +131,17 @@ def test_compute_muscle_fiber_length_instantaneous_equilibrium():
     )
 
     np.testing.assert_almost_equal(muscle_fiber_length, 0.05826843914426753)
+
+    # Test serialization
+    serialized = compute_muscle_fiber_length.serialize()
+    assert serialized == {"method": "ComputeMuscleFiberLengthInstantaneousEquilibrium"}
+    deserialized = ComputeMuscleFiberLengthMethods.InstantaneousEquilibrium.deserialize(serialized)
+    assert type(deserialized) == ComputeMuscleFiberLengthMethods.InstantaneousEquilibrium.value
+
+    with pytest.raises(
+        ValueError, match="Cannot deserialize Unknown as ComputeMuscleFiberLengthInstantaneousEquilibrium"
+    ):
+        ComputeMuscleFiberLengthMethods.InstantaneousEquilibrium.value.deserialize({"method": "Unknown"})
 
 
 def test_compute_muscle_fiber_length_instantaneous_equilibrium_wrong_constructor():

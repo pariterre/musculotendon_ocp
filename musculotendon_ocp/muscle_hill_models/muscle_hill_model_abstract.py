@@ -28,6 +28,27 @@ class ComputeForcePassive(Protocol):
         Get a copy of the passive force-length relationship
         """
 
+    def serialize(self) -> dict:
+        """
+        Serialize the passive force-length relationship
+        """
+
+    @staticmethod
+    def deserialize(data: dict) -> Self:
+        """
+        Deserialize the passive force-length relationship
+
+        Parameters
+        ----------
+        data: dict
+            The serialized passive force-length relationship
+
+        Returns
+        -------
+        ComputeForcePassive
+            The deserialized passive force-length relationship
+        """
+
 
 class ComputeForceActive(Protocol):
     def __call__(self, normalized_muscle_length: MX) -> MX:
@@ -49,6 +70,27 @@ class ComputeForceActive(Protocol):
     def copy(self) -> Self:
         """
         Get a copy of the active force-length relationship
+        """
+
+    def serialize(self) -> dict:
+        """
+        Serialize the active force-length relationship
+        """
+
+    @staticmethod
+    def deserialize(data: dict) -> Self:
+        """
+        Deserialize the active force-length relationship
+
+        Parameters
+        ----------
+        data: dict
+            The serialized active force-length relationship
+
+        Returns
+        -------
+        ComputeForceActive
+            The deserialized active force-length relationship
         """
 
 
@@ -74,6 +116,27 @@ class ComputeForceVelocity(Protocol):
     def copy(self) -> Self:
         """
         Get a copy of the force-velocity relationship
+        """
+
+    def serialize(self) -> dict:
+        """
+        Serialize the force-velocity relationship
+        """
+
+    @staticmethod
+    def deserialize(data: dict) -> Self:
+        """
+        Deserialize the force-velocity relationship
+
+        Parameters
+        ----------
+        data: dict
+            The serialized force-velocity relationship
+
+        Returns
+        -------
+        ComputeForceVelocity
+            The deserialized force-velocity relationship
         """
 
     def inverse(force_velocity_inverse: MX) -> MX:
@@ -144,6 +207,27 @@ class ComputeForceDamping(Protocol):
         Get a copy of the damping
         """
 
+    def serialize(self) -> dict:
+        """
+        Serialize the damping
+        """
+
+    @staticmethod
+    def deserialize(data: dict) -> Self:
+        """
+        Deserialize the damping
+
+        Parameters
+        ----------
+        data: dict
+            The serialized damping
+
+        Returns
+        -------
+        ComputeForceDamping
+            The deserialized damping
+        """
+
     @property
     def factor(self):
         """
@@ -171,6 +255,27 @@ class ComputePennationAngle(Protocol):
     def copy(self) -> Self:
         """
         Get a copy of the pennation angle
+        """
+
+    def serialize(self) -> dict:
+        """
+        Serialize the pennation angle
+        """
+
+    @staticmethod
+    def deserialize(data: dict) -> Self:
+        """
+        Deserialize the pennation angle
+
+        Parameters
+        ----------
+        data: dict
+            The serialized pennation angle
+
+        Returns
+        -------
+        ComputePennationAngle
+            The deserialized pennation angle
         """
 
     def apply(self, muscle_fiber_length: MX, element: MX) -> MX:
@@ -247,6 +352,27 @@ class ComputeMuscleFiberLength(Protocol):
         Get a copy of the muscle fiber length function
         """
 
+    def serialize(self) -> dict:
+        """
+        Serialize the muscle fiber length function
+        """
+
+    @staticmethod
+    def deserialize(data: dict) -> Self:
+        """
+        Deserialize the muscle fiber length function
+
+        Parameters
+        ----------
+        data: dict
+            The serialized muscle fiber length function
+
+        Returns
+        -------
+        ComputeMuscleFiberLength
+            The deserialized muscle fiber length function
+        """
+
     @property
     def mx_variable(self) -> MX:
         """
@@ -298,6 +424,27 @@ class ComputeMuscleFiberVelocity(Protocol):
     def copy(self) -> Self:
         """
         Get a copy of the muscle fiber velocity function
+        """
+
+    def serialize(self) -> dict:
+        """
+        Serialize the muscle fiber velocity function
+        """
+
+    @staticmethod
+    def deserialize(data: dict) -> Self:
+        """
+        Deserialize the muscle fiber velocity function
+
+        Parameters
+        ----------
+        data: dict
+            The serialized muscle fiber velocity function
+
+        Returns
+        -------
+        ComputeMuscleFiberVelocity
+            The deserialized muscle fiber velocity function
         """
 
     @property
@@ -383,6 +530,43 @@ class MuscleHillModelAbstract(ABC):
     def copy(self) -> Self:
         """
         Get a copy of the muscle model
+        """
+
+    def serialize(self) -> dict:
+        """
+        Serialize the muscle model
+        """
+        return {
+            "name": self.name,
+            "label": self.label,
+            "maximal_force": self.maximal_force,
+            "optimal_length": self.optimal_length,
+            "tendon_slack_length": self.tendon_slack_length,
+            "maximal_velocity": self.maximal_velocity,
+            "compute_force_passive": self.compute_force_passive.serialize(),
+            "compute_force_active": self.compute_force_active.serialize(),
+            "compute_force_velocity": self.compute_force_velocity.serialize(),
+            "compute_force_damping": self.compute_force_damping.serialize(),
+            "compute_pennation_angle": self.compute_pennation_angle.serialize(),
+            "compute_muscle_fiber_length": self.compute_muscle_fiber_length.serialize(),
+            "compute_muscle_fiber_velocity": self.compute_muscle_fiber_velocity.serialize(),
+        }
+
+    @staticmethod
+    @abstractmethod
+    def deserialize(data: dict) -> Self:
+        """
+        Deserialize the muscle model
+
+        Parameters
+        ----------
+        data: dict
+            The serialized muscle model
+
+        Returns
+        -------
+        MuscleHillModelAbstract
+            The deserialized muscle model
         """
 
     @property

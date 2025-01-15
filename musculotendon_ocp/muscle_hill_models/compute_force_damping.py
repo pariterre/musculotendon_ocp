@@ -18,6 +18,18 @@ class ComputeForceDampingConstant:
     def copy(self) -> Self:
         return ComputeForceDampingConstant(factor=self.factor)
 
+    def serialize(self) -> dict:
+        return {
+            "method": "ComputeForceDampingConstant",
+            "factor": self.factor,
+        }
+
+    @staticmethod
+    def deserialize(data: dict) -> Self:
+        if data["method"] != "ComputeForceDampingConstant":
+            raise ValueError(f"Cannot deserialize {data['method']} as ComputeForceDampingConstant")
+        return ComputeForceDampingConstant(factor=data["factor"])
+
     @property
     def factor(self):
         return self._factor
@@ -33,6 +45,18 @@ class ComputeForceDampingLinear:
     @property
     def copy(self) -> Self:
         return ComputeForceDampingLinear(factor=self.factor)
+
+    def serialize(self) -> dict:
+        return {
+            "method": "ComputeForceDampingLinear",
+            "factor": self.factor,
+        }
+
+    @staticmethod
+    def deserialize(data: dict) -> Self:
+        if data["method"] != "ComputeForceDampingLinear":
+            raise ValueError(f"Cannot deserialize {data['method']} as ComputeForceDampingLinear")
+        return ComputeForceDampingLinear(factor=data["factor"])
 
     @property
     def factor(self):
@@ -61,3 +85,11 @@ class ComputeForceDampingMethods(Enum):
 
     def __call__(self, *args, **kwargs) -> ComputeForceDamping:
         return self.value(*args, **kwargs)
+
+    @staticmethod
+    def deserialize(data: dict) -> ComputeForceDamping:
+        method = data["method"]
+        for method_enum in ComputeForceDampingMethods:
+            if method_enum.value.__name__ == method:
+                return method_enum.value.deserialize(data)
+        raise ValueError(f"Cannot deserialize {method} as ComputeForceDampingMethods")

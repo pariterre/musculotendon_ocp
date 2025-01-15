@@ -27,6 +27,15 @@ class ComputeMuscleFiberVelocityAsVariable:
     def copy(self) -> Self:
         return ComputeMuscleFiberVelocityAsVariable(mx_symbolic=self.mx_variable)
 
+    def serialize(self) -> dict:
+        return {"method": "ComputeMuscleFiberVelocityAsVariable"}
+
+    @staticmethod
+    def deserialize(data: dict) -> Self:
+        if data["method"] != "ComputeMuscleFiberVelocityAsVariable":
+            raise ValueError(f"Cannot deserialize {data['method']} as ComputeMuscleFiberVelocityAsVariable")
+        return ComputeMuscleFiberVelocityAsVariable()
+
     @cached_property
     def mx_variable(self) -> MX:
         return self._mx_variable
@@ -73,6 +82,15 @@ class ComputeMuscleFiberVelocityRigidTendon(ComputeMuscleFiberVelocityAsVariable
     @property
     def copy(self) -> Self:
         return ComputeMuscleFiberVelocityRigidTendon(mx_symbolic=self.mx_variable)
+
+    def serialize(self) -> dict:
+        return {"method": "ComputeMuscleFiberVelocityRigidTendon"}
+
+    @staticmethod
+    def deserialize(data: dict) -> Self:
+        if data["method"] != "ComputeMuscleFiberVelocityRigidTendon":
+            raise ValueError(f"Cannot deserialize {data['method']} as ComputeMuscleFiberVelocityRigidTendon")
+        return ComputeMuscleFiberVelocityRigidTendon()
 
 
 class ComputeMuscleFiberVelocityFlexibleTendonFromForceDefects(ComputeMuscleFiberVelocityAsVariable):
@@ -139,6 +157,17 @@ class ComputeMuscleFiberVelocityFlexibleTendonFromForceDefects(ComputeMuscleFibe
     @property
     def copy(self) -> Self:
         return ComputeMuscleFiberVelocityFlexibleTendonFromForceDefects(mx_symbolic=self.mx_variable)
+
+    def serialize(self) -> dict:
+        return {"method": "ComputeMuscleFiberVelocityFlexibleTendonFromForceDefects"}
+
+    @staticmethod
+    def deserialize(data: dict) -> Self:
+        if data["method"] != "ComputeMuscleFiberVelocityFlexibleTendonFromForceDefects":
+            raise ValueError(
+                f"Cannot deserialize {data['method']} as ComputeMuscleFiberVelocityFlexibleTendonFromForceDefects"
+            )
+        return ComputeMuscleFiberVelocityFlexibleTendonFromForceDefects()
 
 
 class ComputeMuscleFiberVelocityFlexibleTendonFromVelocityDefects(ComputeMuscleFiberVelocityAsVariable):
@@ -232,6 +261,17 @@ class ComputeMuscleFiberVelocityFlexibleTendonFromVelocityDefects(ComputeMuscleF
     def copy(self) -> Self:
         return ComputeMuscleFiberVelocityFlexibleTendonFromVelocityDefects(mx_symbolic=self.mx_variable)
 
+    def serialize(self) -> dict:
+        return {"method": "ComputeMuscleFiberVelocityFlexibleTendonFromVelocityDefects"}
+
+    @staticmethod
+    def deserialize(data: dict) -> Self:
+        if data["method"] != "ComputeMuscleFiberVelocityFlexibleTendonFromVelocityDefects":
+            raise ValueError(
+                f"Cannot deserialize {data['method']} as ComputeMuscleFiberVelocityFlexibleTendonFromVelocityDefects"
+            )
+        return ComputeMuscleFiberVelocityFlexibleTendonFromVelocityDefects()
+
 
 class ComputeMuscleFiberVelocityFlexibleTendonLinearized(ComputeMuscleFiberVelocityAsVariable):
     """
@@ -288,6 +328,17 @@ class ComputeMuscleFiberVelocityFlexibleTendonLinearized(ComputeMuscleFiberVeloc
     @property
     def copy(self) -> Self:
         return ComputeMuscleFiberVelocityFlexibleTendonLinearized(mx_symbolic=self.mx_variable)
+
+    def serialize(self) -> dict:
+        return {"method": "ComputeMuscleFiberVelocityFlexibleTendonLinearized"}
+
+    @staticmethod
+    def deserialize(data: dict) -> Self:
+        if data["method"] != "ComputeMuscleFiberVelocityFlexibleTendonLinearized":
+            raise ValueError(
+                f"Cannot deserialize {data['method']} as ComputeMuscleFiberVelocityFlexibleTendonLinearized"
+            )
+        return ComputeMuscleFiberVelocityFlexibleTendonLinearized()
 
 
 class ComputeMuscleFiberVelocityFlexibleTendonQuadratic(ComputeMuscleFiberVelocityAsVariable):
@@ -369,6 +420,17 @@ class ComputeMuscleFiberVelocityFlexibleTendonQuadratic(ComputeMuscleFiberVeloci
     def copy(self) -> Self:
         return ComputeMuscleFiberVelocityFlexibleTendonQuadratic(mx_symbolic=self.mx_variable)
 
+    def serialize(self) -> dict:
+        return {"method": "ComputeMuscleFiberVelocityFlexibleTendonQuadratic"}
+
+    @staticmethod
+    def deserialize(data: dict) -> Self:
+        if data["method"] != "ComputeMuscleFiberVelocityFlexibleTendonQuadratic":
+            raise ValueError(
+                f"Cannot deserialize {data['method']} as ComputeMuscleFiberVelocityFlexibleTendonQuadratic"
+            )
+        return ComputeMuscleFiberVelocityFlexibleTendonQuadratic()
+
 
 class ComputeMuscleFiberVelocityMethods(Enum):
     RigidTendon = ComputeMuscleFiberVelocityRigidTendon
@@ -379,3 +441,11 @@ class ComputeMuscleFiberVelocityMethods(Enum):
 
     def __call__(self, *args, **kwargs) -> ComputeMuscleFiberVelocity:
         return self.value(*args, **kwargs)
+
+    @staticmethod
+    def deserialize(data: dict) -> ComputeMuscleFiberVelocity:
+        method = data["method"]
+        for method_enum in ComputeMuscleFiberVelocityMethods:
+            if method_enum.value.__name__ == method:
+                return method_enum.value.deserialize(data)
+        raise ValueError(f"Cannot deserialize {method} as ComputeMuscleFiberVelocityMethods")

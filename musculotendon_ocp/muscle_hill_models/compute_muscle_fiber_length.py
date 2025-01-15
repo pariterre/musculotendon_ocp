@@ -26,6 +26,15 @@ class ComputeMuscleFiberLengthAsVariable:
     def copy(self) -> Self:
         return ComputeMuscleFiberLengthAsVariable(mx_symbolic=self.mx_variable)
 
+    def serialize(self) -> dict:
+        return {"method": "ComputeMuscleFiberLengthAsVariable"}
+
+    @staticmethod
+    def deserialize(data: dict) -> Self:
+        if data["method"] != "ComputeMuscleFiberLengthAsVariable":
+            raise ValueError(f"Cannot deserialize {data['method']} as ComputeMuscleFiberLengthAsVariable")
+        return ComputeMuscleFiberLengthAsVariable()
+
     @cached_property
     def mx_variable(self) -> MX:
         return self._mx_variable
@@ -67,6 +76,15 @@ class ComputeMuscleFiberLengthRigidTendon(ComputeMuscleFiberLengthAsVariable):
     @property
     def copy(self) -> Self:
         return ComputeMuscleFiberLengthRigidTendon(mx_symbolic=self.mx_variable)
+
+    def serialize(self) -> dict:
+        return {"method": "ComputeMuscleFiberLengthRigidTendon"}
+
+    @staticmethod
+    def deserialize(data: dict) -> Self:
+        if data["method"] != "ComputeMuscleFiberLengthRigidTendon":
+            raise ValueError(f"Cannot deserialize {data['method']} as ComputeMuscleFiberLengthRigidTendon")
+        return ComputeMuscleFiberLengthRigidTendon()
 
 
 class ComputeMuscleFiberLengthInstantaneousEquilibrium(ComputeMuscleFiberLengthAsVariable):
@@ -128,6 +146,15 @@ class ComputeMuscleFiberLengthInstantaneousEquilibrium(ComputeMuscleFiberLengthA
     def copy(self) -> Self:
         return ComputeMuscleFiberLengthInstantaneousEquilibrium(mx_symbolic=self.mx_variable)
 
+    def serialize(self) -> dict:
+        return {"method": "ComputeMuscleFiberLengthInstantaneousEquilibrium"}
+
+    @staticmethod
+    def deserialize(data: dict) -> Self:
+        if data["method"] != "ComputeMuscleFiberLengthInstantaneousEquilibrium":
+            raise ValueError(f"Cannot deserialize {data['method']} as ComputeMuscleFiberLengthInstantaneousEquilibrium")
+        return ComputeMuscleFiberLengthInstantaneousEquilibrium()
+
 
 class ComputeMuscleFiberLengthMethods(Enum):
     AsVariable = ComputeMuscleFiberLengthAsVariable
@@ -136,3 +163,11 @@ class ComputeMuscleFiberLengthMethods(Enum):
 
     def __call__(self, *args, **kwargs) -> ComputeMuscleFiberLength:
         return self.value(*args, **kwargs)
+
+    @staticmethod
+    def deserialize(data: dict) -> ComputeMuscleFiberLength:
+        method = data["method"]
+        for method_enum in ComputeMuscleFiberLengthMethods:
+            if method_enum.value.__name__ == method:
+                return method_enum.value.deserialize(data)
+        raise ValueError(f"Cannot deserialize {method} as ComputeMuscleFiberLengthMethods")

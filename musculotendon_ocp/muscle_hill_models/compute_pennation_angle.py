@@ -21,6 +21,15 @@ class ComputePennationAngleConstant:
     def copy(self) -> Self:
         return ComputePennationAngleConstant(pennation_angle=self.pennation_angle)
 
+    def serialize(self) -> dict:
+        return {"method": "ComputePennationAngleConstant", "pennation_angle": self.pennation_angle}
+
+    @staticmethod
+    def deserialize(data: dict) -> Self:
+        if data["method"] != "ComputePennationAngleConstant":
+            raise ValueError(f"Cannot deserialize {data['method']} as ComputePennationAngleConstant")
+        return ComputePennationAngleConstant(pennation_angle=data["pennation_angle"])
+
     def __call__(self, muscle_fiber_length: MX) -> MX:
         return self.pennation_angle
 
@@ -46,6 +55,22 @@ class ComputePennationAngleWrtMuscleFiberLength:
             optimal_muscle_fiber_length=self.optimal_muscle_fiber_length,
         )
 
+    def serialize(self) -> dict:
+        return {
+            "method": "ComputePennationAngleWrtMuscleFiberLength",
+            "optimal_pennation_angle": self.optimal_pennation_angle,
+            "optimal_muscle_fiber_length": self.optimal_muscle_fiber_length,
+        }
+
+    @staticmethod
+    def deserialize(data: dict) -> Self:
+        if data["method"] != "ComputePennationAngleWrtMuscleFiberLength":
+            raise ValueError(f"Cannot deserialize {data['method']} as ComputePennationAngleWrtMuscleFiberLength")
+        return ComputePennationAngleWrtMuscleFiberLength(
+            optimal_pennation_angle=data["optimal_pennation_angle"],
+            optimal_muscle_fiber_length=data["optimal_muscle_fiber_length"],
+        )
+
     def __call__(self, muscle_fiber_length: MX) -> MX:
         return asin(self.optimal_muscle_fiber_length * sin(self.optimal_pennation_angle) / muscle_fiber_length)
 
@@ -62,3 +87,11 @@ class ComputePennationAngleMethods(Enum):
 
     def __call__(self, *args, **kwargs) -> ComputePennationAngle:
         return self.value(*args, **kwargs)
+
+    @staticmethod
+    def deserialize(data: dict) -> ComputePennationAngle:
+        method = data["method"]
+        for method_enum in ComputePennationAngleMethods:
+            if method_enum.value.__name__ == method:
+                return method_enum.value.deserialize(data)
+        raise ValueError(f"Cannot deserialize {method} as ComputePennationAngleMethods")

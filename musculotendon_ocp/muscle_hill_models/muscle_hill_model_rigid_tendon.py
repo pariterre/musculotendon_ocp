@@ -2,13 +2,13 @@ from typing import override, Self
 
 from casadi import MX
 
-from .compute_pennation_angle import ComputePennationAngleConstant
-from .compute_force_active import ComputeForceActiveHillType
-from .compute_force_damping import ComputeForceDampingConstant
-from .compute_force_passive import ComputeForcePassiveHillType
-from .compute_force_velocity import ComputeForceVelocityHillType
-from .compute_muscle_fiber_length import ComputeMuscleFiberLengthRigidTendon
-from .compute_muscle_fiber_velocity import ComputeMuscleFiberVelocityRigidTendon
+from .compute_pennation_angle import ComputePennationAngleMethods
+from .compute_force_active import ComputeForceActiveMethods
+from .compute_force_damping import ComputeForceDampingMethods
+from .compute_force_passive import ComputeForcePassiveMethods
+from .compute_force_velocity import ComputeForceVelocityMethods
+from .compute_muscle_fiber_length import ComputeMuscleFiberLengthMethods
+from .compute_muscle_fiber_velocity import ComputeMuscleFiberVelocityMethods
 from .muscle_hill_model_abstract import (
     MuscleHillModelAbstract,
     ComputeForcePassive,
@@ -39,30 +39,32 @@ class MuscleHillModelRigidTendon(MuscleHillModelAbstract):
         compute_muscle_fiber_velocity: ComputeMuscleFiberVelocity | None = None,
     ):
         compute_pennation_angle = (
-            ComputePennationAngleConstant() if compute_pennation_angle is None else compute_pennation_angle
+            ComputePennationAngleMethods.Constant() if compute_pennation_angle is None else compute_pennation_angle
         )
         compute_force_passive = (
-            ComputeForcePassiveHillType() if compute_force_passive is None else compute_force_passive
+            ComputeForcePassiveMethods.HillType() if compute_force_passive is None else compute_force_passive
         )
-        compute_force_active = ComputeForceActiveHillType() if compute_force_active is None else compute_force_active
+        compute_force_active = (
+            ComputeForceActiveMethods.HillType() if compute_force_active is None else compute_force_active
+        )
         compute_force_velocity = (
-            ComputeForceVelocityHillType() if compute_force_velocity is None else compute_force_velocity
+            ComputeForceVelocityMethods.HillType() if compute_force_velocity is None else compute_force_velocity
         )
         compute_force_damping = (
-            ComputeForceDampingConstant() if compute_force_damping is None else compute_force_damping
+            ComputeForceDampingMethods.Constant() if compute_force_damping is None else compute_force_damping
         )
         compute_muscle_fiber_length = (
-            ComputeMuscleFiberLengthRigidTendon()
+            ComputeMuscleFiberLengthMethods.RigidTendon()
             if compute_muscle_fiber_length is None
             else compute_muscle_fiber_length
         )
         compute_muscle_fiber_velocity = (
-            ComputeMuscleFiberVelocityRigidTendon()
+            ComputeMuscleFiberVelocityMethods.RigidTendon()
             if compute_muscle_fiber_velocity is None
             else compute_muscle_fiber_velocity
         )
 
-        super().__init__(
+        super(MuscleHillModelRigidTendon, self).__init__(
             name=name,
             label=label,
             maximal_force=maximal_force,
@@ -95,6 +97,35 @@ class MuscleHillModelRigidTendon(MuscleHillModelAbstract):
             compute_pennation_angle=self.compute_pennation_angle.copy,
             compute_muscle_fiber_length=self.compute_muscle_fiber_length.copy,
             compute_muscle_fiber_velocity=self.compute_muscle_fiber_velocity.copy,
+        )
+
+    @override
+    def serialize(self) -> dict:
+        return {**super(MuscleHillModelRigidTendon, self).serialize(), **{"method": "MuscleHillModelRigidTendon"}}
+
+    @override
+    @staticmethod
+    def deserialize(data: dict) -> Self:
+        if data["method"] != "MuscleHillModelRigidTendon":
+            raise ValueError(f"Cannot deserialize {data['method']} as MuscleHillModelRigidTendon")
+        return MuscleHillModelRigidTendon(
+            name=data["name"],
+            maximal_force=data["maximal_force"],
+            optimal_length=data["optimal_length"],
+            tendon_slack_length=data["tendon_slack_length"],
+            maximal_velocity=data["maximal_velocity"],
+            label=data["label"],
+            compute_force_passive=ComputeForcePassiveMethods.deserialize(data["compute_force_passive"]),
+            compute_force_active=ComputeForceActiveMethods.deserialize(data["compute_force_active"]),
+            compute_force_velocity=ComputeForceVelocityMethods.deserialize(data["compute_force_velocity"]),
+            compute_force_damping=ComputeForceDampingMethods.deserialize(data["compute_force_damping"]),
+            compute_pennation_angle=ComputePennationAngleMethods.deserialize(data["compute_pennation_angle"]),
+            compute_muscle_fiber_length=ComputeMuscleFiberLengthMethods.deserialize(
+                data["compute_muscle_fiber_length"]
+            ),
+            compute_muscle_fiber_velocity=ComputeMuscleFiberVelocityMethods.deserialize(
+                data["compute_muscle_fiber_velocity"]
+            ),
         )
 
     @override

@@ -13,6 +13,11 @@ class DummyMuscleModelAbstract(MuscleHillModelAbstract):
         pass
 
     @override
+    @staticmethod
+    def deserialize(data: dict) -> Self:
+        pass
+
+    @override
     def normalize_muscle_fiber_length(self, muscle_fiber_length: MX) -> MX:
         pass
 

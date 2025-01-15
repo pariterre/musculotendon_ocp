@@ -42,6 +42,9 @@ def test_compute_muscle_fiber_velocity_methods():
     flexible_tendon_quadratic = ComputeMuscleFiberVelocityMethods.FlexibleTendonQuadratic()
     assert type(flexible_tendon_quadratic) == ComputeMuscleFiberVelocityMethods.FlexibleTendonQuadratic.value
 
+    with pytest.raises(ValueError, match="Cannot deserialize Unknown as ComputeMuscleFiberVelocityMethods"):
+        ComputeMuscleFiberVelocityMethods.deserialize({"method": "Unknown"})
+
 
 def test_compute_muscle_fiber_velocity_rigid_tendon():
     mus = MuscleHillModels.RigidTendon(
@@ -71,6 +74,15 @@ def test_compute_muscle_fiber_velocity_rigid_tendon():
     )
     np.testing.assert_almost_equal(muscle_fiber_velocity, -0.5)
 
+    # Test serialization
+    serialized = compute_muscle_velocity_length.serialize()
+    assert serialized == {"method": "ComputeMuscleFiberVelocityRigidTendon"}
+    deserialized = ComputeMuscleFiberVelocityMethods.deserialize(serialized)
+    assert type(deserialized) == ComputeMuscleFiberVelocityMethods.RigidTendon.value
+
+    with pytest.raises(ValueError, match="Cannot deserialize Unknown as ComputeMuscleFiberVelocityRigidTendon"):
+        ComputeMuscleFiberVelocityMethods.RigidTendon.value.deserialize({"method": "Unknown"})
+
 
 def test_compute_muscle_fiber_velocity_flexible_tendon_from_force_defects():
     mus = MuscleHillModels.FlexibleTendonAlwaysPositive(
@@ -97,6 +109,17 @@ def test_compute_muscle_fiber_velocity_flexible_tendon_from_force_defects():
         )
     )
     np.testing.assert_almost_equal(muscle_fiber_velocity, -5.201202604749881)
+
+    # Test serialization
+    serialized = compute_muscle_fiber_velocity.serialize()
+    assert serialized == {"method": "ComputeMuscleFiberVelocityFlexibleTendonFromForceDefects"}
+    deserialized = ComputeMuscleFiberVelocityMethods.deserialize(serialized)
+    assert type(deserialized) == ComputeMuscleFiberVelocityMethods.FlexibleTendonFromForceDefects.value
+
+    with pytest.raises(
+        ValueError, match="Cannot deserialize Unknown as ComputeMuscleFiberVelocityFlexibleTendonFromForceDefects"
+    ):
+        ComputeMuscleFiberVelocityMethods.FlexibleTendonFromForceDefects.value.deserialize({"method": "Unknown"})
 
 
 def test_compute_muscle_fiber_velocity_flexible_tendon_from_force_defects_wrong_constructor():
@@ -156,6 +179,17 @@ def test_compute_muscle_fiber_velocity_flexible_tendon_from_velocity_defects():
     )
 
     np.testing.assert_almost_equal(muscle_fiber_velocity, -5.201202604749881)
+
+    # Test serialization
+    serialized = compute_muscle_fiber_velocity.serialize()
+    assert serialized == {"method": "ComputeMuscleFiberVelocityFlexibleTendonFromVelocityDefects"}
+    deserialized = ComputeMuscleFiberVelocityMethods.deserialize(serialized)
+    assert type(deserialized) == ComputeMuscleFiberVelocityMethods.FlexibleTendonFromVelocityDefects.value
+
+    with pytest.raises(
+        ValueError, match="Cannot deserialize Unknown as ComputeMuscleFiberVelocityFlexibleTendonFromVelocityDefects"
+    ):
+        ComputeMuscleFiberVelocityMethods.FlexibleTendonFromVelocityDefects.value.deserialize({"method": "Unknown"})
 
 
 def test_compute_muscle_fiber_velocity_flexible_tendon_from_velocity_defects_wrong_constructor():
@@ -226,6 +260,17 @@ def test_compute_muscle_fiber_velocity_flexible_tendon_linearized():
     np.testing.assert_almost_equal(evaluate(0.2, 0.0), -676.3254672085245)
     np.testing.assert_almost_equal(evaluate(0.2, -731.8), -731.8420239027942)
 
+    # Test serialization
+    serialized = mus.compute_muscle_fiber_velocity.serialize()
+    assert serialized == {"method": "ComputeMuscleFiberVelocityFlexibleTendonLinearized"}
+    deserialized = ComputeMuscleFiberVelocityMethods.deserialize(serialized)
+    assert type(deserialized) == ComputeMuscleFiberVelocityMethods.FlexibleTendonLinearized.value
+
+    with pytest.raises(
+        ValueError, match="Cannot deserialize Unknown as ComputeMuscleFiberVelocityFlexibleTendonLinearized"
+    ):
+        ComputeMuscleFiberVelocityMethods.FlexibleTendonLinearized.value.deserialize({"method": "Unknown"})
+
 
 def test_compute_muscle_fiber_velocity_flexible_tendon_quadratic():
     def evaluate(muscle_fiber_length: float, muscle_fiber_velocity_initial_guess: float):
@@ -264,3 +309,14 @@ def test_compute_muscle_fiber_velocity_flexible_tendon_quadratic():
     np.testing.assert_almost_equal(evaluate(0.1, -3.4), -3.438058496100624)
     np.testing.assert_almost_equal(evaluate(0.2, 0.0), -159.10620315897017)
     np.testing.assert_almost_equal(evaluate(0.2, -731.8), -731.8420239027369)
+
+    # Test serialization
+    serialized = mus.compute_muscle_fiber_velocity.serialize()
+    assert serialized == {"method": "ComputeMuscleFiberVelocityFlexibleTendonQuadratic"}
+    deserialized = ComputeMuscleFiberVelocityMethods.deserialize(serialized)
+    assert type(deserialized) == ComputeMuscleFiberVelocityMethods.FlexibleTendonQuadratic.value
+
+    with pytest.raises(
+        ValueError, match="Cannot deserialize Unknown as ComputeMuscleFiberVelocityFlexibleTendonQuadratic"
+    ):
+        ComputeMuscleFiberVelocityMethods.FlexibleTendonQuadratic.value.deserialize({"method": "Unknown"})

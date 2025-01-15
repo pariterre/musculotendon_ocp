@@ -57,6 +57,42 @@ class ComputeForceActiveHillType:
             b43=self.b43,
         )
 
+    def serialize(self) -> dict:
+        return {
+            "method": type(self).__name__,
+            "b11": self.b11,
+            "b21": self.b21,
+            "b31": self.b31,
+            "b41": self.b41,
+            "b12": self.b12,
+            "b22": self.b22,
+            "b32": self.b32,
+            "b42": self.b42,
+            "b13": self.b13,
+            "b23": self.b23,
+            "b33": self.b33,
+            "b43": self.b43,
+        }
+
+    @staticmethod
+    def deserialize(data: dict) -> Self:
+        if data["method"] != ComputeForceActiveHillType.__name__:
+            raise ValueError(f"Cannot deserialize {data['method']} as ComputeForceActiveHillType")
+        return ComputeForceActiveHillType(
+            b11=data["b11"],
+            b21=data["b21"],
+            b31=data["b31"],
+            b41=data["b41"],
+            b12=data["b12"],
+            b22=data["b22"],
+            b32=data["b32"],
+            b42=data["b42"],
+            b13=data["b13"],
+            b23=data["b23"],
+            b33=data["b33"],
+            b43=data["b43"],
+        )
+
     def __call__(self, normalized_muscle_fiber_length: MX) -> MX:
 
         length = normalized_muscle_fiber_length  # alias so the next line is not too long
@@ -72,3 +108,11 @@ class ComputeForceActiveMethods(Enum):
 
     def __call__(self, *args, **kwargs) -> ComputeForceActive:
         return self.value(*args, **kwargs)
+
+    @staticmethod
+    def deserialize(data: dict) -> ComputeForceActive:
+        method = data["method"]
+        for method_enum in ComputeForceActiveMethods:
+            if method_enum.value.__name__ == method:
+                return method_enum.value.deserialize(data)
+        raise ValueError(f"Cannot deserialize {method} as ComputeForceActiveMethods")

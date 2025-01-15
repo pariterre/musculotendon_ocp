@@ -1,6 +1,7 @@
 from casadi import MX, Function, jacobian
 from musculotendon_ocp import ComputeForceVelocityMethods
 from numpy.testing import assert_almost_equal
+import pytest
 
 
 def test_compute_force_velocity_methods():
@@ -8,6 +9,9 @@ def test_compute_force_velocity_methods():
 
     hill_type = ComputeForceVelocityMethods.HillType()
     assert type(hill_type) == ComputeForceVelocityMethods.HillType.value
+
+    with pytest.raises(ValueError, match="Cannot deserialize Unknown as ComputeForceVelocityMethods"):
+        ComputeForceVelocityMethods.deserialize({"method": "Unknown"})
 
 
 def test_compute_force_velocity_hill_type():
@@ -56,3 +60,22 @@ def test_compute_force_velocity_hill_type():
 
     assert force_velocity_model.inverse(-1.0) < force_velocity_model.inverse(0.0)
     assert force_velocity_model.inverse(0.0) < force_velocity_model.inverse(1.0)
+
+    # Test serialization
+    serialized = force_velocity_model.serialize()
+    assert serialized == {
+        "method": "ComputeForceVelocityHillType",
+        "d1": -0.318,
+        "d2": -8.149,
+        "d3": -0.374,
+        "d4": 0.886,
+    }
+    deserialized = ComputeForceVelocityMethods.deserialize(serialized)
+    assert type(deserialized) == ComputeForceVelocityMethods.HillType.value
+    assert deserialized.d1 == -0.318
+    assert deserialized.d2 == -8.149
+    assert deserialized.d3 == -0.374
+    assert deserialized.d4 == 0.886
+
+    with pytest.raises(ValueError, match="Cannot deserialize Unknown as ComputeForceVelocityHillType"):
+        ComputeForceVelocityMethods.HillType.value.deserialize({"method": "Unknown"})

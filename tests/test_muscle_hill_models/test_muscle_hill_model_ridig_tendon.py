@@ -17,7 +17,7 @@ def test_muscle_hill_model_rigid_tendon():
     optimal_length = 0.123
     tendon_slack_length = 0.123
     maximal_velocity = 0.456
-    force_passive = ComputeForceVelocityMethods.HillType()
+    force_passive = ComputeForcePassiveMethods.HillType()
     force_active = ComputeForceActiveMethods.HillType()
     force_damping = ComputeForceDampingMethods.Constant()
     force_velocity = ComputeForceVelocityMethods.HillType()
@@ -55,6 +55,40 @@ def test_muscle_hill_model_rigid_tendon():
     assert model_default.compute_force_active.__dict__ == ComputeForceActiveMethods.HillType().__dict__
     assert model_default.compute_force_damping.__dict__ == ComputeForceDampingMethods.Constant().__dict__
     assert model_default.compute_force_velocity.__dict__ == ComputeForceVelocityMethods.HillType().__dict__
+
+    # Test serialization
+    serialized = model.serialize()
+    assert serialized == {
+        "method": "MuscleHillModelRigidTendon",
+        "name": name,
+        "label": name,
+        "maximal_force": maximal_force,
+        "optimal_length": optimal_length,
+        "tendon_slack_length": tendon_slack_length,
+        "maximal_velocity": maximal_velocity,
+        "compute_force_passive": model.compute_force_passive.serialize(),
+        "compute_force_active": model.compute_force_active.serialize(),
+        "compute_force_damping": model.compute_force_damping.serialize(),
+        "compute_force_velocity": model.compute_force_velocity.serialize(),
+        "compute_pennation_angle": model.compute_pennation_angle.serialize(),
+        "compute_muscle_fiber_length": model.compute_muscle_fiber_length.serialize(),
+        "compute_muscle_fiber_velocity": model.compute_muscle_fiber_velocity.serialize(),
+    }
+    deserialized = MuscleHillModels.RigidTendon.deserialize(serialized)
+    assert type(deserialized) == MuscleHillModels.RigidTendon.value
+    assert deserialized.name == name
+    assert deserialized.maximal_force == maximal_force
+    assert deserialized.optimal_length == optimal_length
+    assert deserialized.tendon_slack_length == tendon_slack_length
+    assert deserialized.maximal_velocity == maximal_velocity
+    assert type(deserialized.compute_force_passive) == type(model.compute_force_passive)
+    assert deserialized.compute_force_passive.__dict__ == model.compute_force_passive.__dict__
+    assert type(deserialized.compute_force_active) == type(model.compute_force_active)
+    assert deserialized.compute_force_active.__dict__ == model.compute_force_active.__dict__
+    assert type(deserialized.compute_force_damping) == type(model.compute_force_damping)
+    assert deserialized.compute_force_damping.__dict__ == model.compute_force_damping.__dict__
+    assert type(deserialized.compute_force_velocity) == type(model.compute_force_velocity)
+    assert deserialized.compute_force_velocity.__dict__ == model.compute_force_velocity.__dict__
 
 
 def test_muscle_hill_model_rigid_tendon_normalize_muscle_fiber_length():

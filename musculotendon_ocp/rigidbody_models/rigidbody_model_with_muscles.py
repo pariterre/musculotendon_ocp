@@ -21,7 +21,7 @@ from ..muscle_hill_models.compute_muscle_fiber_velocity import (
 
 class RigidbodyModelWithMuscles(BiorbdModel):
     def __init__(self, bio_model: str, muscles: Iterable[MuscleHillModelAbstract], *args, **kwargs):
-        super().__init__(bio_model, *args, **kwargs)
+        super(RigidbodyModelWithMuscles, self).__init__(bio_model, *args, **kwargs)
 
         self._muscle_index_to_biorbd_model = []
         biorbd_muscle_names = super(RigidbodyModelWithMuscles, self).muscle_names
@@ -46,7 +46,7 @@ class RigidbodyModelWithMuscles(BiorbdModel):
             new_muscles[-1].tendon_length_mx = muscle.tendon_length_mx
 
         new_model = RigidbodyModelWithMuscles(
-            bio_model=self.path,
+            bio_model=self.model.path().absolutePath().to_string(),
             friction_coefficients=self._friction_coefficients,
             segments_to_apply_external_forces=self._segments_to_apply_external_forces,
             muscles=new_muscles,
@@ -92,7 +92,7 @@ class RigidbodyModelWithMuscles(BiorbdModel):
             new_muscles[-1].tendon_length_mx = muscle.tendon_length_mx
 
         new_model = RigidbodyModelWithMuscles(
-            bio_model=self.path,
+            bio_model=self.model.path().absolutePath().to_string(),
             friction_coefficients=self._friction_coefficients,
             segments_to_apply_external_forces=self._segments_to_apply_external_forces,
             muscles=new_muscles,

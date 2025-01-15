@@ -15,3 +15,11 @@ class MuscleHillModels(Enum):
 
     def __call__(self, *args, **kwargs) -> MuscleHillModelAbstract:
         return self.value(*args, **kwargs)
+
+    @staticmethod
+    def deserialize(data: dict) -> MuscleHillModelAbstract:
+        method = data["method"]
+        for method_enum in MuscleHillModels:
+            if method_enum.value.__name__ == method:
+                return method_enum.value.deserialize(data)
+        raise ValueError(f"Cannot deserialize {method} as MuscleHillModels")

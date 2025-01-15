@@ -12,6 +12,9 @@ def test_compute_pennation_angle_methods():
     wrt_muscle_fiber_length = ComputePennationAngleMethods.WrtMuscleFiberLength()
     assert type(wrt_muscle_fiber_length) == ComputePennationAngleMethods.WrtMuscleFiberLength.value
 
+    with pytest.raises(ValueError, match="Cannot deserialize Unknown as ComputePennationAngleMethods"):
+        ComputePennationAngleMethods.deserialize({"method": "Unknown"})
+
 
 def test_compute_pennation_angle_constant():
     with pytest.raises(ValueError, match="The pennation angle must be positive"):
@@ -56,6 +59,16 @@ def test_compute_pennation_angle_constant():
     # Test values based on qualitative behavioremove (increasing exponential function)
     assert_almost_equal(pennation_angle_model.remove(1.0, 0.0), 0.0)
     assert pennation_angle_model.apply(1.1, 0.5) == pennation_angle_model.apply(1.2, 0.5)
+
+    # Test serialization
+    serialized = pennation_angle_model.serialize()
+    assert serialized == {"method": "ComputePennationAngleConstant", "pennation_angle": 0.1}
+    deserialized = ComputePennationAngleMethods.deserialize(serialized)
+    assert type(deserialized) == ComputePennationAngleMethods.Constant.value
+    assert deserialized.pennation_angle == 0.1
+
+    with pytest.raises(ValueError, match="Cannot deserialize Unknown as ComputePennationAngleConstant"):
+        ComputePennationAngleMethods.Constant.value.deserialize({"method": "Unknown"})
 
 
 def test_compute_pennation_angle_wrt_muscle_fiber_length():
@@ -116,3 +129,18 @@ def test_compute_pennation_angle_wrt_muscle_fiber_length():
     assert pennation_angle_model.remove(1.2, 0.5) != ComputePennationAngleMethods.Constant(pennation_angle=0.1).remove(
         1.2, 0.5
     )
+
+    # Test serialization
+    serialized = pennation_angle_model.serialize()
+    assert serialized == {
+        "method": "ComputePennationAngleWrtMuscleFiberLength",
+        "optimal_pennation_angle": 0.1,
+        "optimal_muscle_fiber_length": 1.1,
+    }
+    deserialized = ComputePennationAngleMethods.deserialize(serialized)
+    assert type(deserialized) == ComputePennationAngleMethods.WrtMuscleFiberLength.value
+    assert_almost_equal(deserialized.optimal_pennation_angle, 0.1)
+    assert_almost_equal(deserialized.optimal_muscle_fiber_length, 1.1)
+
+    with pytest.raises(ValueError, match="Cannot deserialize Unknown as ComputePennationAngleWrtMuscleFiberLength"):
+        ComputePennationAngleMethods.WrtMuscleFiberLength.value.deserialize({"method": "Unknown"})

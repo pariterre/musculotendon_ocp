@@ -29,6 +29,21 @@ class ComputeForceVelocityHillType:
     def copy(self) -> Self:
         return ComputeForceVelocityHillType(d1=self.d1, d2=self.d2, d3=self.d3, d4=self.d4)
 
+    def serialize(self) -> dict:
+        return {
+            "method": "ComputeForceVelocityHillType",
+            "d1": self.d1,
+            "d2": self.d2,
+            "d3": self.d3,
+            "d4": self.d4,
+        }
+
+    @staticmethod
+    def deserialize(data: dict) -> Self:
+        if data["method"] != "ComputeForceVelocityHillType":
+            raise ValueError(f"Cannot deserialize {data['method']} as ComputeForceVelocityHillType")
+        return ComputeForceVelocityHillType(d1=data["d1"], d2=data["d2"], d3=data["d3"], d4=data["d4"])
+
     def __call__(self, normalized_muscle_fiber_velocity: MX) -> MX:
         # alias so the next line is not too long
         velocity = normalized_muscle_fiber_velocity
@@ -54,3 +69,11 @@ class ComputeForceVelocityMethods(Enum):
 
     def __call__(self, *args, **kwargs) -> ComputeForceVelocity:
         return self.value(*args, **kwargs)
+
+    @staticmethod
+    def deserialize(data: dict) -> ComputeForceVelocity:
+        method = data["method"]
+        for method_enum in ComputeForceVelocityMethods:
+            if method_enum.value.__name__ == method:
+                return method_enum.value.deserialize(data)
+        raise ValueError(f"Cannot deserialize {method} as ComputeForceVelocityMethods")
