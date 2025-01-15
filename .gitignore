@@ -90,3 +90,4 @@ venv.bak/
 *.DS_store
 
 sandbox
+*.json

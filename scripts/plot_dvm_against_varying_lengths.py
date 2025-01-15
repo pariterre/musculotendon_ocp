@@ -1,4 +1,6 @@
+import json
 from functools import partial
+import os
 from typing import Callable
 
 from matplotlib import pyplot as plt
@@ -140,27 +142,32 @@ def optimize_for_tendon_to_optimal_length_ratio(
 
 
 def main() -> None:
+    ratios = [0.1, 0.2, 0.5, 0.75, 1.0, 1.5, 2.0, 5.0, 10.0]
+    dts = [0.0001, 0.0005, 0.001, 0.005, 0.01]
+    # ratios = [5.0, 10.0]
+    # dts = [0.001, 0.005]
+
+    load_results = False
+    save_path = "results/results.json"
+    plot_graphs = True
     target_force = 500.0
-    ratios = [0.1, 0.2, 0.5, 0.75, 1.0, 1.5, 2.0, 5.0, 10.0]  # This necessitates dt=0.0001
-    # ratios = [0.5, 1.0, 5.0, 10.0]
-    dt = 0.0001
+    velocity_threshold = 1e-2
     colors = ["b", "g", "y", "m", "c"]
     activation_at_start = 0.01
     activation_at_end = 1.0
     reference_muscle_label = "Force defects"
-    velocity_threshold = 1e-2
     model = RigidbodyModels.WithMuscles(
         "../musculotendon_ocp/rigidbody_models/models/one_muscle_holding_a_cube.bioMod",
         muscles=[
-            # MuscleHillModels.RigidTendon(
-            #     name="Mus1",
-            #     label="Rigid",
-            #     maximal_force=1000,
-            #     optimal_length=0.1,
-            #     tendon_slack_length=0.1,
-            #     compute_force_damping=ComputeForceDampingMethods.Linear(factor=0.1),
-            #     maximal_velocity=5.0,
-            # ),
+            MuscleHillModels.RigidTendon(
+                name="Mus1",
+                label="Rigid",
+                maximal_force=1000,
+                optimal_length=0.1,
+                tendon_slack_length=0.1,
+                compute_force_damping=ComputeForceDampingMethods.Linear(factor=0.1),
+                maximal_velocity=5.0,
+            ),
             MuscleHillModels.FlexibleTendon(
                 name="Mus1",
                 label="Force defects",
@@ -209,149 +216,234 @@ def main() -> None:
     )
     muscle_count = len(model.muscles)
     reference_index = [m.label for m in model.muscles].index(reference_muscle_label)
+    meta_data = {
+        "ratios": ratios,
+        "dts": dts,
+        "target_force": target_force,
+        "velocity_threshold": velocity_threshold,
+        "activation_at_start": activation_at_start,
+        "activation_at_end": activation_at_end,
+        "reference_muscle_label": reference_muscle_label,
+        "model_name": model.name,
+        "muscle_models": [muscle.serialize() for muscle in model.muscles],
+    }
 
-    for ratio in ratios:
-        resized_model, optimized_q = optimize_for_tendon_to_optimal_length_ratio(
-            model,
-            target_ratio=ratio,
-            target_force=target_force,
-            q_initial_guess=np.array([0.185]),
-            reference_muscle_index=reference_index,
-        )
-
-        activations_at_start = np.array([activation_at_start] * muscle_count)
-        qdot = np.array([0.0])
-        initial_muscles_fiber_length = np.array(
-            resized_model.function_to_dm(
-                resized_model.muscle_fiber_lengths_equilibrated,
-                activations=activations_at_start,
-                q=optimized_q,
-                qdot=qdot,
+    if load_results and os.path.exists(save_path):
+        data = json.load(open(save_path, "r"))
+        if meta_data != data["meta_data"]:
+            raise ValueError(
+                "The meta data does not match the saved data, change your parameters or set load_results to False"
             )
-        )[:, 0]
-        initial_muscles_fiber_velocity = np.array([0.0] * muscle_count)
+        results = data["results"]
+    else:
+        results = {}
+        for ratio in ratios:
+            results[str(ratio)] = {}
+            for dt in dts:
+                print(f"Processing ratio {ratio} for dt={dt}")
+                resized_model, optimized_q = optimize_for_tendon_to_optimal_length_ratio(
+                    model,
+                    target_ratio=ratio,
+                    target_force=target_force,
+                    q_initial_guess=np.array([0.185]),
+                    reference_muscle_index=reference_index,
+                )
 
-        activations_at_end = np.array([activation_at_end] * muscle_count)
-        muscles_fiber_length_dynamics_fn = partial(
-            muscle_fiber_length_dynamics,
-            fn_to_dm=resized_model.to_casadi_function(
-                resized_model.muscle_fiber_velocities,
-                "activations",
-                "q",
-                "qdot",
-                "muscle_fiber_lengths",
-                "muscle_fiber_velocity_initial_guesses",
-            ),
-            activations=activations_at_end,
-            q=optimized_q,
-        )
-        inter_integration_step_fn = partial(
-            update_initial_velocity_guesses,
-            fn_to_dm=resized_model.to_casadi_function(
-                resized_model.muscle_fiber_velocities,
-                "activations",
-                "q",
-                "qdot",
-                "muscle_fiber_lengths",
-                "muscle_fiber_velocity_initial_guesses",
-            ),
-            activations=activations_at_end,
-            q=optimized_q,
-        )
-        muscles_force_fn = resized_model.to_casadi_function(
-            resized_model.muscle_forces,
-            "activations",
-            "q",
-            "qdot",
-            "muscle_fiber_lengths",
-            "muscle_fiber_velocities",
-        )
+                activations_at_start = np.array([activation_at_start] * muscle_count)
+                qdot = np.array([0.0])
+                initial_muscles_fiber_length = np.array(
+                    resized_model.function_to_dm(
+                        resized_model.muscle_fiber_lengths_equilibrated,
+                        activations=activations_at_start,
+                        q=optimized_q,
+                        qdot=qdot,
+                    )
+                )[:, 0]
+                initial_muscles_fiber_velocity = np.array([0.0] * muscle_count)
 
-        # Reset the previous muscle fiber velocities container
-        initial_velocity_guesses.clear()
-        initial_velocity_guesses.append(initial_muscles_fiber_velocity)
-
-        # Integrate the muscle fiber length
-        t, muscles_fiber_length = precise_rk4(
-            muscles_fiber_length_dynamics_fn,
-            y0=initial_muscles_fiber_length,
-            t_span=[0, 0.05],
-            dt=dt,
-            inter_step_callback=inter_integration_step_fn,
-        )
-
-        # Dispatch the results and compute the resulting muscle forces
-        muscles_fiber_length: np.ndarray = muscles_fiber_length.T
-        muscles_fiber_velocity: np.ndarray = np.array(initial_velocity_guesses)
-        muscles_force = np.array(
-            [
-                muscles_force_fn(
+                activations_at_end = np.array([activation_at_end] * muscle_count)
+                muscles_fiber_length_dynamics_fn = partial(
+                    muscle_fiber_length_dynamics,
+                    fn_to_dm=resized_model.to_casadi_function(
+                        resized_model.muscle_fiber_velocities,
+                        "activations",
+                        "q",
+                        "qdot",
+                        "muscle_fiber_lengths",
+                        "muscle_fiber_velocity_initial_guesses",
+                    ),
                     activations=activations_at_end,
                     q=optimized_q,
-                    qdot=qdot,
-                    muscle_fiber_lengths=muscles_fiber_length[i, :],
-                    muscle_fiber_velocities=muscles_fiber_velocity[i, :],
-                )["output"]
-                for i in range(muscles_fiber_length.shape[0])
-            ]
-        ).squeeze()
+                )
+                inter_integration_step_fn = partial(
+                    update_initial_velocity_guesses,
+                    fn_to_dm=resized_model.to_casadi_function(
+                        resized_model.muscle_fiber_velocities,
+                        "activations",
+                        "q",
+                        "qdot",
+                        "muscle_fiber_lengths",
+                        "muscle_fiber_velocity_initial_guesses",
+                    ),
+                    activations=activations_at_end,
+                    q=optimized_q,
+                )
+                muscles_force_fn = resized_model.to_casadi_function(
+                    resized_model.muscle_forces,
+                    "activations",
+                    "q",
+                    "qdot",
+                    "muscle_fiber_lengths",
+                    "muscle_fiber_velocities",
+                )
 
-        plt.figure(f"Muscle fiber velocity and force for a ratio of {ratio}")
+                # Reset the previous muscle fiber velocities container
+                initial_velocity_guesses.clear()
+                initial_velocity_guesses.append(initial_muscles_fiber_velocity)
 
-        # Plot muscle velocities
-        plt.subplot(3, 1, 1)
-        for m in range(len(resized_model.muscles)):
-            plt.plot(t, muscles_fiber_velocity[:, m], label=resized_model.muscles[m].label, color=colors[m], marker="o")
-            # Find where the t index where the velocity is negligeable (velocity_threshold)
-            equilibrated_t_index = np.where(np.abs(muscles_fiber_velocity[:, m]) < velocity_threshold)[0]
-            if len(equilibrated_t_index) > 1:
-                # By design the index 0 is 0, so skip it
-                equilibrated_t_index = equilibrated_t_index[1]
-                plt.axvline(x=t[equilibrated_t_index], color=colors[m], linestyle="--")
-        plt.title(f"Muscle fiber velocity")
-        plt.xlabel("Time (s)")
-        plt.ylabel("Muscle fiber velocity (m/s)")
-        plt.grid(visible=True)
-        plt.legend()
+                # Integrate the muscle fiber length
+                try:
+                    t, muscles_fiber_length = precise_rk4(
+                        muscles_fiber_length_dynamics_fn,
+                        y0=initial_muscles_fiber_length,
+                        t_span=[0, 0.05],
+                        dt=dt,
+                        inter_step_callback=inter_integration_step_fn,
+                    )
+                except:
+                    print(f"Failed for ratio {ratio} and dt {dt}")
+                    continue
 
-        # Plot muscle forces
-        plt.subplot(3, 1, 2)
-        for m in range(len(resized_model.muscles)):
-            plt.plot(t, muscles_force[:, m], label=resized_model.muscles[m].label, color=colors[m], marker="o")
-            # Find where the t index where the velocity is negligeable (velocity_threshold)
-            equilibrated_t_index = np.where(np.abs(muscles_fiber_velocity[:, m]) < velocity_threshold)[0]
-            if len(equilibrated_t_index) > 1:
-                # By design the index 0 is 0, so skip it
-                equilibrated_t_index = equilibrated_t_index[1]
-                plt.axvline(x=t[equilibrated_t_index], color=colors[m], linestyle="--")
-        plt.title(f"Muscle force")
-        plt.xlabel("Time (s)")
-        plt.ylabel("Muscle force (N)")
-        plt.grid(visible=True)
-        plt.legend()
+                # Dispatch the results and compute the resulting muscle forces
+                muscles_fiber_length: np.ndarray = muscles_fiber_length.T
+                muscles_fiber_velocity: np.ndarray = np.array(initial_velocity_guesses)
+                muscles_force = np.array(
+                    [
+                        muscles_force_fn(
+                            activations=activations_at_end,
+                            q=optimized_q,
+                            qdot=qdot,
+                            muscle_fiber_lengths=muscles_fiber_length[i, :],
+                            muscle_fiber_velocities=muscles_fiber_velocity[i, :],
+                        )["output"]
+                        for i in range(muscles_fiber_length.shape[0])
+                    ]
+                ).squeeze()
 
-        # Plot the integrated impulse difference
-        plt.subplot(3, 1, 3)
-        for m in range(len(resized_model.muscles)):
-            cum_diff_force = np.cumsum(muscles_force[:, m] - muscles_force[:, reference_index])
-            impulse = np.zeros_like(muscles_force[:, m])
-            impulse[1:] = (cum_diff_force[1:] + cum_diff_force[:-1]) * (t[1:] - t[:-1]) / 2
-            plt.plot(t, impulse, label=model.muscles[m].label, color=colors[m], marker="o")
-            # Find where the t index where the velocity is negligeable (velocity_threshold)
-            equilibrated_t_index = np.where(np.abs(muscles_fiber_velocity[:, m]) < velocity_threshold)[0]
-            if len(equilibrated_t_index) > 1:
-                # By design the index 0 is 0, so skip it
-                equilibrated_t_index = equilibrated_t_index[1]
-                plt.axvline(x=t[equilibrated_t_index], color=colors[m], linestyle="--")
-        plt.title(f"Integrated impulse difference")
-        plt.xlabel("Time (s)")
-        plt.ylabel("Integrated impulse\ndifference (N*s)")
-        plt.grid(visible=True)
-        plt.legend()
+                equilibrated_t_indices = []
+                # Find where the t index where the velocity is negligeable (velocity_threshold)
+                for m in range(len(resized_model.muscles)):
+                    normalized_velocity = model.muscles[reference_index].normalize_muscle_fiber_velocity(
+                        muscles_fiber_velocity[:, m]
+                    )
+                    index = np.where(np.abs(normalized_velocity) < velocity_threshold)[0]
+                    # By design the index 0 is 0, so skip it
+                    equilibrated_t_indices.append(int(index[1]) if len(index) > 1 else None)
 
-        plt.tight_layout()
+                results[str(ratio)][str(dt)] = {
+                    "t": t.tolist(),
+                    "muscles_fiber_velocity": muscles_fiber_velocity.tolist(),
+                    "muscles_force": muscles_force.tolist(),
+                    "equilibrated_t_indices": equilibrated_t_indices,
+                }
 
-    plt.show()
+        # Save as json file
+        if not os.path.exists("results"):
+            os.makedirs("results")
+        json.dump(
+            {
+                "meta_data": meta_data,
+                "results": results,
+            },
+            open(save_path, "w"),
+        )
+
+    # Build the latex table from the results
+    header_title = r"\multicolumn{" + str(len(dts)) + r"}{c}{Time to equilibrium (s)}"
+    header_dt = " & ".join([f"dt = {dt:.4f}" for dt in dts])
+
+    print(r"\begin{table}[h]")
+    print(r"\centering")
+    print(r"\begin{tabular}{>{\raggedright}p{3.5cm}" + "c" * len(dts) + r"}")
+    print(r"\multirow{2}{3.5cm}{Ratio slack length to optimal length} & " + header_title + r"\\")
+    print(r" & " + header_dt + r"\\")
+    print(r"\hline")
+
+    for ratio in ratios:
+        row = f"{ratio:.1f}"
+        for dt in dts:
+            data = results[str(ratio)][str(dt)]
+            equilibrated_t_index = data["equilibrated_t_indices"][reference_index]
+            row += " & -" if equilibrated_t_index is None else f" & {data['t'][equilibrated_t_index]:.4f}"
+        row += r"\\"
+        print(row)
+
+    print(r"\end{tabular}")
+    print(
+        r"\caption{Time to reach an equilibrated muscle fiber velocity for different tendon to optimal length ratios and time steps}"
+    )
+    print(r"\label{tab:equilibrated_muscle_fiber_velocity}")
+    print(r"\end{table}")
+
+    if plot_graphs:
+        for ratio in ratios:
+            for dt in dts:
+                data = results[str(ratio)][str(dt)]
+
+                t = np.array(data["t"])
+                muscles_fiber_velocity = np.array(data["muscles_fiber_velocity"])
+                muscles_force = np.array(data["muscles_force"])
+                equilibrated_t_indices = np.array(data["equilibrated_t_indices"])
+
+                plt.figure(f"Muscle fiber velocity and force for a ratio of {ratio} at dt = {dt}")
+
+                # Plot muscle velocities
+                plt.subplot(3, 1, 1)
+                for m in range(len(model.muscles)):
+                    plt.plot(
+                        t,
+                        muscles_fiber_velocity[:, m],
+                        label=model.muscles[m].label,
+                        color=colors[m],
+                        marker="o",
+                    )
+                    if equilibrated_t_indices[m] is not None:
+                        plt.axvline(x=t[equilibrated_t_indices[m]], color=colors[m], linestyle="--")
+                plt.title(f"Muscle fiber velocity")
+                plt.xlabel("Time (s)")
+                plt.ylabel("Muscle fiber velocity (m/s)")
+                plt.grid(visible=True)
+                plt.legend()
+
+                # Plot muscle forces
+                plt.subplot(3, 1, 2)
+                for m in range(len(model.muscles)):
+                    plt.plot(t, muscles_force[:, m], label=model.muscles[m].label, color=colors[m], marker="o")
+                    if equilibrated_t_indices[m] is not None:
+                        plt.axvline(x=t[equilibrated_t_indices[m]], color=colors[m], linestyle="--")
+                plt.title(f"Muscle force")
+                plt.xlabel("Time (s)")
+                plt.ylabel("Muscle force (N)")
+                plt.grid(visible=True)
+                plt.legend()
+
+                # Plot the integrated impulse difference
+                plt.subplot(3, 1, 3)
+                for m in range(len(model.muscles)):
+                    cum_diff_force = np.cumsum(muscles_force[:, m] - muscles_force[:, reference_index])
+                    impulse = np.zeros_like(muscles_force[:, m])
+                    impulse[1:] = (cum_diff_force[1:] + cum_diff_force[:-1]) * (t[1:] - t[:-1]) / 2
+                    plt.plot(t, impulse, label=model.muscles[m].label, color=colors[m], marker="o")
+                    if equilibrated_t_indices[m] is not None:
+                        plt.axvline(x=t[equilibrated_t_indices[m]], color=colors[m], linestyle="--")
+                plt.title(f"Integrated impulse difference")
+                plt.xlabel("Time (s)")
+                plt.ylabel("Integrated impulse\ndifference (N*s)")
+                plt.grid(visible=True)
+                plt.legend()
+
+                plt.tight_layout()
+        plt.show()
 
 
 if __name__ == "__main__":
